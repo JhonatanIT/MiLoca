@@ -50,6 +50,9 @@ kotlin {
 
             // Location Services
             implementation(libs.play.services.location)
+
+            // Lifecycle ViewModel components
+            implementation(libs.androidx.runtime.livedata)
         }
         commonMain.dependencies {
             implementation(compose.runtime)

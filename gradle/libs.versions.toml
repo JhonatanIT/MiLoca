@@ -17,8 +17,10 @@ kotlin = "2.1.10"
 kotlinx-coroutines = "1.10.1"
 kotlinxDatetime = "0.6.2"
 playServicesLocation = "21.3.0"
+runtimeLivedata = "1.7.8"
 
 [libraries]
+androidx-runtime-livedata = { module = "androidx.compose.runtime:runtime-livedata", version.ref = "runtimeLivedata" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
