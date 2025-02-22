@@ -1,4 +1,4 @@
-package org.jibanez.miloca
+package org.jibanez.miloca.app.activity
 
 import android.Manifest
 import android.content.Intent
@@ -19,7 +19,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
+import org.jibanez.miloca.App
+import org.jibanez.miloca.service.location.LocationService
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -28,7 +29,7 @@ class MainActivity : ComponentActivity() {
             this,
             arrayOf(
                 Manifest.permission.ACCESS_COARSE_LOCATION,
-                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_FINE_LOCATION
             ),
             0
         )
@@ -43,7 +44,7 @@ class MainActivity : ComponentActivity() {
                     Button(onClick = {
                         Intent(applicationContext, LocationService::class.java).apply {
                             action = LocationService.ACTION_START
-                            ContextCompat.startForegroundService(this@MainActivity, this)
+                            applicationContext.startForegroundService(this)
                         }
                     }) {
                         Text(text = "Start")
@@ -62,6 +63,11 @@ class MainActivity : ComponentActivity() {
             //TODO Use location services and notifications in Web and Desktop apps
             //App()
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        stopService(Intent(applicationContext, LocationService::class.java))
     }
 }
 

@@ -1,4 +1,4 @@
-package org.jibanez.miloca
+package org.jibanez.miloca.service.location
 
 import android.location.Location
 import kotlinx.coroutines.flow.Flow

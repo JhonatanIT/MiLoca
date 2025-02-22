@@ -1,6 +1,5 @@
-package org.jibanez.miloca
+package org.jibanez.miloca.service.location
 
-import android.annotation.SuppressLint
 import android.content.Context
 import android.location.Location
 import android.location.LocationManager
@@ -21,15 +20,13 @@ class DefaultLocationClient(
     private val client: FusedLocationProviderClient
 ) : LocationClient {
 
-    //TODO Remove this annotation
-    @SuppressLint("MissingPermission")
     override fun getLocationUpdates(interval: Long): Flow<Location> = callbackFlow {
         // 1. Check for Location Permissions
         if (!context.hasLocationPermission()) {
             throw LocationClient.LocationException("Missing location permission")
         }
 
-        // 2. Check if Location Services are Enabled
+        // 2. Check if Network or GPS is enabled
         val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
         val isGpsEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
         val isNetworkEnabled = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
@@ -52,11 +49,16 @@ class DefaultLocationClient(
         }
 
         // 5. Request Location Updates
-        client.requestLocationUpdates(
-            request,
-            locationCallback,
-            Looper.getMainLooper()
-        )
+        try{
+            client.requestLocationUpdates(
+                request,
+                locationCallback,
+                Looper.getMainLooper()
+            )
+        } catch (e: SecurityException){
+            client.removeLocationUpdates(locationCallback)
+            throw LocationClient.LocationException("Failed to request location updates: ${e.message}")
+        }
 
         // 6. Handle Cleanup on Flow Closure
         awaitClose {

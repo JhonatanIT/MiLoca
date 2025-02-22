@@ -1,11 +1,15 @@
-package org.jibanez.miloca
+package org.jibanez.miloca.service.location
 
+import android.app.ForegroundServiceStartNotAllowedException
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
+import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import androidx.core.app.ServiceCompat
 import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -14,6 +18,8 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import org.jibanez.miloca.R
+import org.jibanez.miloca.app.LocationApp
 
 /**
  * Service to track location updates and display them in a notification.
@@ -56,7 +62,7 @@ class LocationService: Service() {
      * Starts location tracking and displays a notification with the location updates.
      */
     private fun start() {
-        val notification = NotificationCompat.Builder(this, "location")
+        val notification = NotificationCompat.Builder(this, LocationApp.LOCATION_CHANNEL_ID)
             .setContentTitle("Tracking location...")
             .setContentText("Location: ...loading")
             .setSmallIcon(R.drawable.ic_launcher_background)
@@ -84,7 +90,22 @@ class LocationService: Service() {
             }
             .launchIn(serviceScope)
 
-        startForeground(1, notification.build())
+        try {
+            ServiceCompat.startForeground(this,1, notification.build(),
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+                } else {
+                    0
+                }
+            )
+        } catch (e: Exception) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                && e is ForegroundServiceStartNotAllowedException
+            ) {
+                println("App not in a valid state to start foreground service") // (e.g. started from bg)
+            }
+            println("Error starting foreground service: ${e.message}")
+        }
     }
 
     private fun stop() {

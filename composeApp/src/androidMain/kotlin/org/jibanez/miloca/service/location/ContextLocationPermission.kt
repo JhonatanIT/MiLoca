@@ -1,4 +1,4 @@
-package org.jibanez.miloca
+package org.jibanez.miloca.service.location
 
 import android.Manifest
 import android.content.Context
@@ -15,7 +15,7 @@ fun Context.hasLocationPermission(): Boolean {
         Manifest.permission.ACCESS_COARSE_LOCATION,
         Manifest.permission.ACCESS_FINE_LOCATION
     )
-    return permissions.all {
+    return permissions.any {
         ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
     }
 }
