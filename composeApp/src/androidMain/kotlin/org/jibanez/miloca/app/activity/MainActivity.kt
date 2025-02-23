@@ -30,6 +30,7 @@ import org.jibanez.miloca.LocationViewModel
 import org.jibanez.miloca.service.location.DefaultLocationClient
 import org.jibanez.miloca.service.location.LocationClient
 import org.jibanez.miloca.service.location.LocationService
+import org.jibanez.miloca.service.sensor.SensorService
 
 class MainActivity : ComponentActivity() {
 
@@ -83,7 +84,7 @@ class MainActivity : ComponentActivity() {
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(onClick = {
-                        locationViewModel.startLocationUpdates(1000L)
+                        locationViewModel.startLocationUpdates(2000L)
                     }) {
                         Text(text = "Show Location")
                     }
@@ -91,6 +92,26 @@ class MainActivity : ComponentActivity() {
                     locationData.value?.let { location ->
                         Text(text = location)
                     }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(onClick = {
+                        Intent(applicationContext, SensorService::class.java).apply {
+                            action = SensorService.ACTION_START
+                            applicationContext.startForegroundService(this)
+                        }
+                    }) {
+                        Text(text = "Start Sensor")
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(onClick = {
+                        Intent(applicationContext, SensorService::class.java).apply {
+                            action = SensorService.ACTION_STOP
+                            startService(this)
+                        }
+                    }) {
+                        Text(text = "Stop Sensor")
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
             }
             //TODO Use location services and notifications in Web and Desktop apps

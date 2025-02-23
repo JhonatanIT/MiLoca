@@ -1,4 +1,4 @@
-package org.jibanez.miloca.service.location
+package org.jibanez.miloca.service.sensor
 
 import android.app.ForegroundServiceStartNotAllowedException
 import android.app.NotificationManager
@@ -6,43 +6,43 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
-import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
 import org.jibanez.miloca.R
 import org.jibanez.miloca.app.LocationApp
 
-/**
- * Service to track location updates and display them in a notification.
- */
-class LocationService: Service() {
+
+class SensorService: Service(), SensorEventListener {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private lateinit var locationClient: LocationClient
+    private lateinit var sensorManager: SensorManager
+
+    private val notification = NotificationCompat.Builder(this, LocationApp.LOCATION_CHANNEL_ID)
+        .setContentTitle("MiLoca")
+        .setContentText("Light: ...loading")
+        .setSmallIcon(R.drawable.ic_launcher_background)
+        .setOngoing(true)
+    private val notificationManager : NotificationManager by lazy {
+        getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    }
 
     override fun onBind(p0: Intent?): IBinder? {
         return null
     }
 
-    /**
-     * Called by the system when the service is first created.
-     * Initializes the location client.
-     */
     override fun onCreate() {
         super.onCreate()
-        locationClient = DefaultLocationClient(
-            applicationContext,
-            LocationServices.getFusedLocationProviderClient(applicationContext)
-        )
+        sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
     }
 
 
@@ -62,37 +62,25 @@ class LocationService: Service() {
      * Starts location tracking and displays a notification with the location updates.
      */
     private fun start() {
-        val notification = NotificationCompat.Builder(this, LocationApp.LOCATION_CHANNEL_ID)
-            .setContentTitle("MiLoca")
-            .setContentText("Location: ...loading")
-            .setSmallIcon(R.drawable.ic_launcher_background)
-            .setOngoing(true)
 
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val lightSensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT)
 
-        locationClient
-            .getLocationUpdates(2000L)
-            .catch { e -> e.printStackTrace() }
-            .onEach { location ->
-                val lat = location.latitude.toString()
-                val long = location.longitude.toString()
-                val altitude = location.altitude.toString()
-                val speedAccuracyMetersPerSecond = location.speedAccuracyMetersPerSecond.toString()
-
-                val updatedNotification = notification.setContentText(
-                    """
-                       Location: ($lat, $long)
-                       Altitude: $altitude m - Speed: $speedAccuracyMetersPerSecond m/s,
-                    """.trimIndent()
-                )
-                notificationManager.notify(1, updatedNotification.build())
-            }
-            .launchIn(serviceScope)
+        lightSensor?.let { light ->
+            sensorManager.registerListener(
+                this,
+                light,
+                SensorManager.SENSOR_DELAY_NORMAL
+            )
+        }
 
         try {
             ServiceCompat.startForeground(this,1, notification.build(),
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                    } else {
+                       0
+                    }
                 } else {
                     0
                 }
@@ -108,11 +96,13 @@ class LocationService: Service() {
     }
 
     private fun stop() {
+        sensorManager.unregisterListener(this)
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
 
     override fun onDestroy() {
+        sensorManager.unregisterListener(this)
         super.onDestroy()
         serviceScope.cancel()
     }
@@ -120,5 +110,14 @@ class LocationService: Service() {
     companion object {
         const val ACTION_START = "ACTION_START"
         const val ACTION_STOP = "ACTION_STOP"
+    }
+
+    override fun onSensorChanged(event: SensorEvent) {
+        val updatedNotification = notification.setContentText("Light: ${event.values.last()} lux")
+        notificationManager.notify(1, updatedNotification.build())
+    }
+
+    override fun onAccuracyChanged(sensor: Sensor, p1: Int) {
+        println( "Sensor accuracy changed: ${sensor.name} - $p1")
     }
 }

@@ -1,11 +1,12 @@
 package org.jibanez.miloca
 
 import android.app.Application
+import android.location.LocationManager
+import androidx.core.content.ContextCompat.getSystemService
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import org.jibanez.miloca.service.location.LocationClient
 
@@ -23,15 +24,23 @@ class LocationViewModel(application: Application, private val locationClient: Lo
     val locationData: LiveData<String> get() = _locationData
 
     fun startLocationUpdates(interval: Long) {
-
-        //Coroutine scope that is tied to the lifecycle of the ViewModel
-        viewModelScope.launch {
-            //For each location update, update the location data - Kotlin Flow
-            locationClient.getLocationUpdates(interval).collect { location ->
-                val lat = location.latitude.toString()
-                val long = location.longitude.toString()
-                _locationData.postValue("Location: ($lat, $long)")
+        if (isNetworkAndGPSEnabled()) {
+            //Coroutine scope that is tied to the lifecycle of the ViewModel
+            viewModelScope.launch {
+                //For each location update, update the location data - Kotlin Flow
+                locationClient.getLocationUpdates(interval).collect { location ->
+                    val lat = location.latitude.toString()
+                    val long = location.longitude.toString()
+                    _locationData.postValue("Location: ($lat, $long)")
+                }
             }
+        } else {
+            _locationData.postValue("GPS or NETWORK disabled")
         }
+    }
+
+    private fun isNetworkAndGPSEnabled(): Boolean {
+        val locationManager = getSystemService(getApplication<Application>().applicationContext, LocationManager::class.java) as LocationManager
+        return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) || locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
     }
 }
