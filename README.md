@@ -24,28 +24,37 @@ You can open the web application by running the `:composeApp:wasmJsBrowserDevelo
 ## Gradle secrets properties
 
 To use secrets in your project, you can create a `secrets.properties` file in the root of the project with the following content (replace `YOUR_MAPS_API_KEY` with your actual key):
-```MAPS_API_KEY=YOUR_MAPS_API_KEY
+```
+MAPS_API_KEY=YOUR_MAPS_API_KEY
 ```
 
 Create a `secrets.default.properties` file in the root of the project with the following content:
-```MAPS_API_KEY=DEFAULT_API_KEY
+```
+MAPS_API_KEY=DEFAULT_API_KEY
 ```
 
 In the project's root `build.gradle.kts` file, add the following code to read the secrets:
-```alias(libs.plugins.google.android.libraries.mapsplatform.secrets.gradle.plugin) apply false
+```
+plugins {
+    ...
+    alias(libs.plugins.google.android.libraries.mapsplatform.secrets.gradle.plugin) apply false
+}
 ``` 
 
 In the app-level `build.gradle.kts` project file, add the following code to read the secrets:
-```plugins {
+```
+  plugins {
+    ...
     alias(libs.plugins.google.android.libraries.mapsplatform.secrets.gradle.plugin)
-   }
+  }
 
-    dependencies {
-        implementation(libs.maps.compose)
-        implementation(libs.play.services.maps)
-    }
+  dependencies {
+    ...
+    implementation(libs.maps.compose)
+    implementation(libs.play.services.maps)
+  }
 
-    secrets {
+  secrets {
     // Change the properties file from the default "local.properties" in your root project
     // to another properties file in your root project.
     // To add your Maps API key to this project:
@@ -62,7 +71,7 @@ In the app-level `build.gradle.kts` project file, add the following code to read
     // "sdk.dir" is ignored by default.
     ignoreList.add("keyToIgnore") // Ignore the key "keyToIgnore"
     ignoreList.add("sdk.*")       // Ignore all keys matching the regexp "sdk.*"
-}
+  }
 ```
 
 In the AndroidManifest.xml file, add the following code to read the secrets:
