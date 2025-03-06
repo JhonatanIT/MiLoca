@@ -29,7 +29,7 @@ class SensorService: Service(), SensorEventListener {
 
     private val notification = NotificationCompat.Builder(this, LocationApp.LOCATION_CHANNEL_ID)
         .setContentTitle("MiLoca")
-        .setContentText("Light: ...loading")
+        .setContentText("Sensors: ...loading")
         .setSmallIcon(R.drawable.ic_launcher_background)
         .setOngoing(true)
     private val notificationManager : NotificationManager by lazy {
@@ -63,12 +63,23 @@ class SensorService: Service(), SensorEventListener {
      */
     private fun start() {
 
+        //TODO include more sensors TYPE_GRAVITY
+        //Light sensor
         val lightSensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT)
-
-        lightSensor?.let { light ->
+        lightSensor?.let { sensor ->
             sensorManager.registerListener(
                 this,
-                light,
+                sensor,
+                SensorManager.SENSOR_DELAY_NORMAL
+            )
+        }
+
+        //Linear acceleration sensor
+        val linearAccelerationSensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)   //Will be resources optimized with TYPE_ACCELEROMETER
+        linearAccelerationSensor?.let { sensor ->
+            sensorManager.registerListener(
+                this,
+                sensor,
                 SensorManager.SENSOR_DELAY_NORMAL
             )
         }
@@ -101,6 +112,7 @@ class SensorService: Service(), SensorEventListener {
         stopSelf()
     }
 
+    //TODO When the app is terminated, the service dont stop, Fix it!
     override fun onDestroy() {
         sensorManager.unregisterListener(this)
         super.onDestroy()
@@ -113,8 +125,25 @@ class SensorService: Service(), SensorEventListener {
     }
 
     override fun onSensorChanged(event: SensorEvent) {
-        val updatedNotification = notification.setContentText("Light: ${event.values.last()} lux")
-        notificationManager.notify(1, updatedNotification.build())
+        val updatedNotification = notification.setContentText(
+            when(event.sensor.type) {
+                Sensor.TYPE_LIGHT -> {
+                    "Light: ${event.values.last()} lux"
+                }
+                Sensor.TYPE_LINEAR_ACCELERATION -> {
+                    "Linear acceleration: ${event.values.joinToString("-")} m/s^2"
+                }
+                else -> {
+                    "Sensor: ${event.sensor.name} - ${event.values.joinToString()}"
+                }
+            }
+        )
+
+        if(event.sensor.type == Sensor.TYPE_LINEAR_ACCELERATION) {
+            println("Linear acceleration: ${event.values.joinToString("-")} m/s^2")
+        } else {
+            notificationManager.notify(1, updatedNotification.build())
+        }
     }
 
     override fun onAccuracyChanged(sensor: Sensor, p1: Int) {

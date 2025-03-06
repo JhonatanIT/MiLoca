@@ -20,3 +20,59 @@ You can open the web application by running the `:composeApp:wasmJsBrowserDevelo
 ## Troubleshooting
 
 - Execute ./gradlew kotlinUpgradeYarnLock to update the yarn.lock file when run Web application.
+
+## Gradle secrets properties
+
+To use secrets in your project, you can create a `secrets.properties` file in the root of the project with the following content (replace `YOUR_MAPS_API_KEY` with your actual key):
+```MAPS_API_KEY=YOUR_MAPS_API_KEY
+```
+
+Create a `secrets.default.properties` file in the root of the project with the following content:
+```MAPS_API_KEY=DEFAULT_API_KEY
+```
+
+In the project's root `build.gradle.kts` file, add the following code to read the secrets:
+```alias(libs.plugins.google.android.libraries.mapsplatform.secrets.gradle.plugin) apply false
+``` 
+
+In the app-level `build.gradle.kts` project file, add the following code to read the secrets:
+```plugins {
+    alias(libs.plugins.google.android.libraries.mapsplatform.secrets.gradle.plugin)
+   }
+
+    dependencies {
+        implementation(libs.maps.compose)
+        implementation(libs.play.services.maps)
+    }
+
+    secrets {
+    // Change the properties file from the default "local.properties" in your root project
+    // to another properties file in your root project.
+    // To add your Maps API key to this project:
+    // 1. If the secrets.properties file does not exist, create it in the same folder as the local.properties file.
+    // 2. Add this line, where YOUR_API_KEY is your API key:
+    //        MAPS_API_KEY=YOUR_API_KEY
+    propertiesFileName = "secrets.properties"
+
+    // A properties file containing default secret values. This file can be checked in version
+    // control.
+    defaultPropertiesFileName = "secrets.defaults.properties"
+
+    // Configure which keys should be ignored by the plugin by providing regular expressions.
+    // "sdk.dir" is ignored by default.
+    ignoreList.add("keyToIgnore") // Ignore the key "keyToIgnore"
+    ignoreList.add("sdk.*")       // Ignore all keys matching the regexp "sdk.*"
+}
+```
+
+In the AndroidManifest.xml file, add the following code to read the secrets:
+```
+<application
+  ....
+  <meta-data
+    android:name="com.google.android.geo.API_KEY"
+    android:value="${MAPS_API_KEY}" />
+</application>
+```
+
+Reference: [Gradle Secrets Plugin](https://github.com/google/secrets-gradle-plugin)

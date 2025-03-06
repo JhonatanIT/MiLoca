@@ -25,6 +25,12 @@ import androidx.core.app.ActivityCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.google.android.gms.location.LocationServices
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapProperties
+import com.google.maps.android.compose.MapUiSettings
+import com.google.maps.android.compose.rememberCameraPositionState
 import org.jibanez.miloca.App
 import org.jibanez.miloca.LocationViewModel
 import org.jibanez.miloca.service.location.DefaultLocationClient
@@ -112,6 +118,9 @@ class MainActivity : ComponentActivity() {
                         Text(text = "Stop Sensor")
                     }
                     Spacer(modifier = Modifier.height(16.dp))
+
+                    //TODO stylish the map appearance
+                    MyMap()
                 }
             }
             //TODO Use location services and notifications in Web and Desktop apps
@@ -142,4 +151,28 @@ class LocationViewModelFactory(
 @Composable
 fun AppAndroidPreview() {
     App()
+}
+
+@Composable
+fun MyMap() {
+    // Set properties using MapProperties composable
+    val mapProperties = MapProperties(
+        isMyLocationEnabled = true
+    )
+    // Set the camera's starting position
+    val singapore = LatLng(1.35, 103.87)
+
+    val cameraPositionState = rememberCameraPositionState() {
+        position = CameraPosition.fromLatLngZoom(singapore, 10f)
+    }
+
+    // set settings using MapUiSettings
+    val mapUiSettings = MapUiSettings(compassEnabled = true)
+
+    GoogleMap(
+        modifier = Modifier.fillMaxSize(),
+        cameraPositionState = cameraPositionState,
+        properties = mapProperties,
+        uiSettings = mapUiSettings
+    )
 }

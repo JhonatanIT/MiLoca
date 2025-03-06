@@ -3,16 +3,10 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-
-    <!-- since Android 12 -->
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-
-    <!-- Location Service -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" /> <!-- since Android 12 -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" /> <!-- Location Service -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
-
-    <!-- Sensor Service -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" /> <!-- Sensor Service -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
     <application
@@ -23,6 +17,11 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
+
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="${MAPS_API_KEY}" />
+
         <service android:name=".service.location.LocationService" android:foregroundServiceType="location" />
         <service android:name=".service.sensor.SensorService" android:foregroundServiceType="specialUse" >
             <property android:name="android.app.PROPERTY_SPECIAL_USE_SENSOR_SUBTYPE"
