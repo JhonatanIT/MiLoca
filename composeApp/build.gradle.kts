@@ -106,6 +106,10 @@ android {
         implementation(libs.maps.compose)
         implementation(libs.play.services.maps)
     }
+
+    buildFeatures {
+        buildConfig = true
+    }
 }
 
 dependencies {

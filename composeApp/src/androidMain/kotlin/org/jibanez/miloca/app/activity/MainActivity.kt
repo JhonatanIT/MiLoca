@@ -17,8 +17,10 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
@@ -28,8 +30,13 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapEffect
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
+import com.google.maps.android.compose.MapsComposeExperimentalApi
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
 import org.jibanez.miloca.App
 import org.jibanez.miloca.LocationViewModel
@@ -153,26 +160,76 @@ fun AppAndroidPreview() {
     App()
 }
 
+@OptIn(MapsComposeExperimentalApi::class)
 @Composable
 fun MyMap() {
     // Set properties using MapProperties composable
     val mapProperties = MapProperties(
         isMyLocationEnabled = true
     )
-    // Set the camera's starting position
-    val singapore = LatLng(1.35, 103.87)
 
-    val cameraPositionState = rememberCameraPositionState() {
-        position = CameraPosition.fromLatLngZoom(singapore, 10f)
+    // Sample location data
+    val locations = remember {
+        listOf(
+            LatLng(37.7749, -122.4194), // San Francisco
+            LatLng(37.3382, -121.8863), // San Jose
+            LatLng(37.8715, -122.2730), // Berkeley
+            LatLng(37.4275, -122.1697)  // Palo Alto
+        )
     }
 
-    // set settings using MapUiSettings
-    val mapUiSettings = MapUiSettings(compassEnabled = true)
+    // Calculate the center point for camera position
+    val centerLocation = remember {
+        LatLng(
+            locations.map { it.latitude }.average(),
+            locations.map { it.longitude }.average()
+        )
+    }
+
+    // Remember camera position state
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(centerLocation, 10f)
+    }
+
+    // Marker of Lima
+    val lima = remember { LatLng(-12.046374, -77.042793)}
+    val limaTitle = "Lima"
+    val limaSnippet = "Capital of Peru"
+
+    // Map UI settings
+    val mapUiSettings = remember {
+        MapUiSettings(
+            zoomControlsEnabled = true,
+            compassEnabled = true
+        )
+    }
 
     GoogleMap(
         modifier = Modifier.fillMaxSize(),
         cameraPositionState = cameraPositionState,
         properties = mapProperties,
         uiSettings = mapUiSettings
-    )
+    ){
+        Marker(remember {MarkerState (position = lima)},
+            title = limaTitle,
+            snippet = limaSnippet,
+            alpha = 0.8f,
+            draggable = true,
+        )
+        // Primary polyline connecting all locations
+        Polyline(
+            points = locations,
+            color = Color(0xFF0000FF), // Blue color
+            width = 5f,
+            clickable = true,
+            jointType = com.google.android.gms.maps.model.JointType.ROUND
+        )
+
+        MapEffect(Unit) { map ->
+            map.setOnPoiClickListener { poi ->
+                println("POI clicked: ${poi.name}")
+            }
+        }
+    }
+
 }
