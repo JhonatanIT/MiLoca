@@ -1,4 +1,4 @@
-package org.jibanez.miloca
+package org.jibanez.miloca.viewmodel
 
 import android.app.Application
 import android.location.LocationManager
@@ -18,6 +18,8 @@ import org.jibanez.miloca.service.location.LocationClient
  * lifecycle.
  *
  */
+
+//TODO use Koin
 class LocationViewModel(application: Application, private val locationClient: LocationClient) : AndroidViewModel(application) {
 
     private val _locationData = MutableLiveData<String>()

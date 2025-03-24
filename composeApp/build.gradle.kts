@@ -10,6 +10,7 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.google.android.libraries.mapsplatform.secrets.gradle.plugin)
+    id("com.google.devtools.ksp")
 }
 
 kotlin {
@@ -105,6 +106,16 @@ android {
     dependencies {
         implementation(libs.maps.compose)
         implementation(libs.play.services.maps)
+        implementation(libs.play.services.location)
+
+        //Room - Local database
+        implementation(libs.androidx.room.runtime)
+        implementation(libs.androidx.room.ktx)
+        ksp(libs.androidx.room.compiler)
+
+        //Koin - Dependency Injection
+        implementation(libs.insert.koin.koin.android)
+        implementation(libs.koin.androidx.compose)
     }
 
     buildFeatures {

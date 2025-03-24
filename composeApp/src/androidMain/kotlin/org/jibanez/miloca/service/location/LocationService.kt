@@ -10,7 +10,6 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
-import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -20,6 +19,11 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import org.jibanez.miloca.R
 import org.jibanez.miloca.app.LocationApp
+import org.jibanez.miloca.entity.LocationPoint
+import org.jibanez.miloca.repository.DatabaseProvider
+import org.jibanez.miloca.repository.LocationRepository
+import org.koin.android.ext.android.inject
+import java.util.UUID
 
 /**
  * Service to track location updates and display them in a notification.
@@ -27,24 +31,12 @@ import org.jibanez.miloca.app.LocationApp
 class LocationService: Service() {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private lateinit var locationClient: LocationClient
+    private val locationClient: LocationClient by inject()
+    private var currentRouteId: String = ""
 
     override fun onBind(p0: Intent?): IBinder? {
         return null
     }
-
-    /**
-     * Called by the system when the service is first created.
-     * Initializes the location client.
-     */
-    override fun onCreate() {
-        super.onCreate()
-        locationClient = DefaultLocationClient(
-            applicationContext,
-            LocationServices.getFusedLocationProviderClient(applicationContext)
-        )
-    }
-
 
     /**
      * Called by the system every time a client explicitly starts the service by calling startService(Intent).
@@ -77,15 +69,29 @@ class LocationService: Service() {
                 val lat = location.latitude.toString()
                 val long = location.longitude.toString()
                 val altitude = location.altitude.toString()
-                val speedAccuracyMetersPerSecond = location.speedAccuracyMetersPerSecond.toString()
 
                 val updatedNotification = notification.setContentText(
                     """
                        Location: ($lat, $long)
-                       Altitude: $altitude m - Speed: $speedAccuracyMetersPerSecond m/s,
+                       Altitude: $altitude m,
                     """.trimIndent()
                 )
                 notificationManager.notify(1, updatedNotification.build())
+
+                // Create unique route ID for this tracking session
+                currentRouteId = UUID.randomUUID().toString()
+
+                val locationPoint = LocationPoint(
+                    latitude = location.latitude,
+                    longitude = location.longitude,
+                    routeId = currentRouteId,
+                    altitude = location.altitude,
+                )
+
+                val db = DatabaseProvider.getDatabase(applicationContext)
+                val repository = LocationRepository(db.locationDao())
+
+                repository.saveLocation(locationPoint)
             }
             .launchIn(serviceScope)
 

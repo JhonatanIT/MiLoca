@@ -5,6 +5,10 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.util.Log
+import appModule
+import org.koin.android.ext.koin.androidContext
+import org.koin.android.ext.koin.androidLogger
+import org.koin.core.context.startKoin
 
 /**
  * LocationApp is the main Application class for the location tracking app.
@@ -23,6 +27,12 @@ class LocationApp: Application() {
 
     override fun onCreate() {
         super.onCreate()
+
+       startKoin {
+            androidLogger()
+            androidContext(this@LocationApp)
+            modules(appModule)
+        }
         createNotificationChannel()
     }
 

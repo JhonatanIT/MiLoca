@@ -85,3 +85,9 @@ In the AndroidManifest.xml file, add the following code to read the secrets:
 ```
 
 Reference: [Gradle Secrets Plugin](https://github.com/google/secrets-gradle-plugin)
+
+## KSP - Kotlin Symbol Processing
+
+KSP is a tool for Kotlin developers that allows you to create custom annotations and process them at compile time. It is similar to Java's annotation processing but is designed specifically for Kotlin.
+
+Reference: [Migrate from kapt to KSP](https://developer.android.com/build/migrate-to-ksp#add-ksp) 
