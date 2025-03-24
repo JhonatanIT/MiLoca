@@ -5,7 +5,6 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -37,22 +36,13 @@ import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
 import org.jibanez.miloca.App
-import org.jibanez.miloca.service.location.LocationClient
 import org.jibanez.miloca.service.location.LocationService
 import org.jibanez.miloca.service.sensor.SensorService
 import org.jibanez.miloca.viewmodel.LocationViewModel
-import org.jibanez.miloca.viewmodel.LocationViewModelFactory
 import org.jibanez.miloca.viewmodel.MapViewModel
-import org.koin.android.ext.android.inject
 import org.koin.androidx.compose.koinViewModel
 
-class MainActivity : ComponentActivity() {
-
-    //by: property delegation
-    private val locationClient: LocationClient by inject()
-    private val locationViewModel: LocationViewModel by viewModels {
-        LocationViewModelFactory(application, locationClient)
-    }
+class MainActivity() : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -72,6 +62,10 @@ class MainActivity : ComponentActivity() {
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+
+                    // Use koinViewModel to get the LocationViewModel
+                    val locationViewModel: LocationViewModel = koinViewModel()
+
                     //observeAsState() converts the imperative LiveData into a declarative State that Compose can understand.
                     val currentLocation = locationViewModel.locationData.observeAsState()
 
@@ -102,7 +96,6 @@ class MainActivity : ComponentActivity() {
                     currentLocation.value?.let { location ->
                         Text(text = location)
                     }
-
 
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(onClick = {

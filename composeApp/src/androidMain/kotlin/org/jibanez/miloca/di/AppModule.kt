@@ -6,10 +6,11 @@ import org.jibanez.miloca.repository.LocationDatabase
 import org.jibanez.miloca.repository.LocationRepository
 import org.jibanez.miloca.service.location.DefaultLocationClient
 import org.jibanez.miloca.service.location.LocationClient
+import org.jibanez.miloca.viewmodel.LocationViewModel
 import org.jibanez.miloca.viewmodel.MapViewModel
 import org.koin.android.ext.koin.androidApplication
 import org.koin.android.ext.koin.androidContext
-import org.koin.androidx.viewmodel.dsl.viewModel
+import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
 
 val appModule = module {
@@ -32,12 +33,15 @@ val appModule = module {
     single { LocationRepository(get()) }
 
     // ViewModel
-    viewModel { MapViewModel(get()) }
+    viewModelOf(::MapViewModel)
 
+    //Location ViewModel
     single<FusedLocationProviderClient> {
         LocationServices.getFusedLocationProviderClient(androidContext())
     }
     single<LocationClient> {
         DefaultLocationClient(androidApplication(), get())
     }
+
+    viewModelOf(::LocationViewModel)
 }

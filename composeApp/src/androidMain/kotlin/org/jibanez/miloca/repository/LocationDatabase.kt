@@ -24,7 +24,7 @@ object DatabaseProvider {
                 "location_database" // Use a meaningful name
             )
 //                .addTypeConverter(LocalDateTimeConverter())
-//                .fallbackToDestructiveMigration() // Destroys and recreates the db on schema change
+                .fallbackToDestructiveMigration() // Destroys and recreates the db on schema change
                 .build()
 
             databaseInstance = instance
