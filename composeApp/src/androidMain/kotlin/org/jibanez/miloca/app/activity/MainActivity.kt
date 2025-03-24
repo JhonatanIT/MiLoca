@@ -103,6 +103,7 @@ class MainActivity : ComponentActivity() {
                         Text(text = location)
                     }
 
+
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(onClick = {
                         Intent(applicationContext, SensorService::class.java).apply {
