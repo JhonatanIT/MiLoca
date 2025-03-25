@@ -6,18 +6,31 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.material.Button
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -56,69 +69,108 @@ class MainActivity() : ComponentActivity() {
         )
         setContent {
 
+            // Use koinViewModel to get the LocationViewModel
+            val locationViewModel: LocationViewModel = koinViewModel()
+
+            //observeAsState() converts the imperative LiveData into a declarative State that Compose can understand.
+            val currentLocation = locationViewModel.locationData.observeAsState()
+            locationViewModel.startLocationUpdates(2000L)
+
             MaterialTheme {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
 
-                    // Use koinViewModel to get the LocationViewModel
-                    val locationViewModel: LocationViewModel = koinViewModel()
+                Scaffold(
+                    modifier = Modifier.fillMaxSize().padding(16.dp),
+                ) { paddingValues ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(paddingValues),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
 
-                    //observeAsState() converts the imperative LiveData into a declarative State that Compose can understand.
-                    val currentLocation = locationViewModel.locationData.observeAsState()
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
 
-                    Button(onClick = {
-                        Intent(applicationContext, LocationService::class.java).apply {
-                            action = LocationService.ACTION_START
-                            applicationContext.startForegroundService(this)
+                            RoutesDropdownMenu()
+
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+
+                                Button(onClick = {
+                                    Intent(applicationContext, LocationService::class.java).apply {
+                                        action = LocationService.ACTION_START
+                                        applicationContext.startForegroundService(this)
+                                    }
+
+                                    Intent(applicationContext, SensorService::class.java).apply {
+                                        action = SensorService.ACTION_START
+                                        applicationContext.startForegroundService(this)
+                                    }
+                                }) {
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(Icons.Default.PlayArrow, contentDescription = "Start")
+                                        Text(text = "Start")
+                                    }
+
+                                }
+                                Button(onClick = {
+                                    Intent(applicationContext, LocationService::class.java).apply {
+                                        action = LocationService.ACTION_STOP
+                                        startService(this)
+                                    }
+
+                                    Intent(applicationContext, SensorService::class.java).apply {
+                                        action = SensorService.ACTION_STOP
+                                        startService(this)
+                                    }
+                                }) {
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(Icons.Default.Close, contentDescription = "Stop")
+                                        Text(text = "Stop")
+                                    }
+                                }
+                            }
                         }
-                    }) {
-                        Text(text = "Start")
-                    }
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(onClick = {
-                        Intent(applicationContext, LocationService::class.java).apply {
-                            action = LocationService.ACTION_STOP
-                            startService(this)
-                        }
-                    }) {
-                        Text(text = "Stop")
-                    }
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(onClick = {
-                        locationViewModel.startLocationUpdates(2000L)
-                    }) {
-                        Text(text = "Show Location")
-                    }
-                    Spacer(modifier = Modifier.height(16.dp))
-                    currentLocation.value?.let { location ->
-                        Text(text = location)
-                    }
 
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(onClick = {
-                        Intent(applicationContext, SensorService::class.java).apply {
-                            action = SensorService.ACTION_START
-                            applicationContext.startForegroundService(this)
+                        MyMap()
+                        currentLocation.value?.let { location ->
+                            Text(text = location)
                         }
-                    }) {
-                        Text(text = "Start Sensor")
-                    }
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(onClick = {
-                        Intent(applicationContext, SensorService::class.java).apply {
-                            action = SensorService.ACTION_STOP
-                            startService(this)
-                        }
-                    }) {
-                        Text(text = "Stop Sensor")
-                    }
-                    Spacer(modifier = Modifier.height(16.dp))
+                        // Bottom Section
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            // Buttons
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Button(onClick = {
+                                }) {
+                                    Text("Refresh")
+                                }
 
-                    //TODO stylish the map appearance
-                    MyMap()
+                                Button(onClick = {
+
+                                }) {
+                                    Text("Reset")
+                                }
+                            }
+                        }
+                    }
                 }
             }
             //TODO Use location services and notifications in Web and Desktop apps
@@ -136,6 +188,37 @@ class MainActivity() : ComponentActivity() {
 @Composable
 fun AppAndroidPreview() {
     App()
+}
+
+@Composable
+fun RoutesDropdownMenu() {
+
+    val routesList = listOf("Route 1", "Route 2", "Route 3") // Replace with actual routes
+    var expandedDropdown by remember { mutableStateOf(false) }
+    var selectedRoute by remember { mutableStateOf(routesList[0]) }
+
+    Box(
+        modifier = Modifier.width(100.dp),
+        contentAlignment = Alignment.TopStart
+    ) {
+        Button(onClick = { expandedDropdown = true }) {
+            Text(selectedRoute)
+        }
+        DropdownMenu(
+            expanded = expandedDropdown,
+            onDismissRequest = { expandedDropdown = false }
+        ) {
+            routesList.forEach { route ->
+                DropdownMenuItem(
+                    text = { Text(text = route) },
+                    onClick = {
+                        selectedRoute = route
+                        expandedDropdown = false
+                    }
+                )
+            }
+        }
+    }
 }
 
 @OptIn(MapsComposeExperimentalApi::class)
@@ -179,12 +262,13 @@ fun MyMap(mapViewModel: MapViewModel = koinViewModel()) {
     val mapUiSettings = remember {
         MapUiSettings(
             zoomControlsEnabled = true,
-            compassEnabled = true
+            compassEnabled = true,
+            mapToolbarEnabled = true
         )
     }
 
     GoogleMap(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.height(400.dp),
         cameraPositionState = cameraPositionState,
         properties = mapProperties,
         uiSettings = mapUiSettings
@@ -211,5 +295,4 @@ fun MyMap(mapViewModel: MapViewModel = koinViewModel()) {
             }
         }
     }
-
 }

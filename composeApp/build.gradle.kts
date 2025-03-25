@@ -116,6 +116,11 @@ android {
         //Koin - Dependency Injection
         implementation(libs.insert.koin.koin.android)
         implementation(libs.koin.androidx.compose)
+
+        //Material Design
+        implementation(libs.androidx.ui)
+        implementation(libs.androidx.material3)
+        implementation(libs.androidx.ui.tooling.preview)
     }
 
     buildFeatures {
