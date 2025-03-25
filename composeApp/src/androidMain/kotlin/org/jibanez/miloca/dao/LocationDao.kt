@@ -11,6 +11,9 @@ interface LocationDao {
     @Insert
     suspend fun insertLocation(location: LocationPoint)
 
+    @Query("DELETE FROM location_points")
+    suspend fun deleteAllLocations()
+
     @Query("SELECT * FROM location_points WHERE routeId = :routeId ORDER BY timestamp ASC")
     fun getLocationsByRouteId(routeId: String): Flow<List<LocationPoint>>
 

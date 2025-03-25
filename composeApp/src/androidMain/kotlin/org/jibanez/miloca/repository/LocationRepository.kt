@@ -26,4 +26,8 @@ class LocationRepository(
     suspend fun getLastRecordedLocation(): LocationPoint? {
         return locationDao.getLastRecordedLocation()
     }
+
+    suspend fun deleteAllLocations() {
+        locationDao.deleteAllLocations()
+    }
 }

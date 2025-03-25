@@ -69,12 +69,14 @@ class MainActivity() : ComponentActivity() {
         )
         setContent {
 
-            // Use koinViewModel to get the LocationViewModel
             val locationViewModel: LocationViewModel = koinViewModel()
+            val mapViewModel: MapViewModel = koinViewModel()
 
             //observeAsState() converts the imperative LiveData into a declarative State that Compose can understand.
             val currentLocation = locationViewModel.locationData.observeAsState()
             locationViewModel.startLocationUpdates(2000L)
+
+            val routes by mapViewModel.routes.collectAsState(initial = emptyList())
 
             MaterialTheme {
 
@@ -95,7 +97,7 @@ class MainActivity() : ComponentActivity() {
                             verticalAlignment = Alignment.CenterVertically
                         ) {
 
-                            RoutesDropdownMenu()
+                            RoutesDropdownMenu(routes)
 
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -143,7 +145,7 @@ class MainActivity() : ComponentActivity() {
                             }
                         }
 
-                        MyMap()
+                        MyMap(mapViewModel)
                         currentLocation.value?.let { location ->
                             Text(text = location)
                         }
@@ -159,8 +161,9 @@ class MainActivity() : ComponentActivity() {
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Button(onClick = {
+                                    mapViewModel.deleteAllLocations()
                                 }) {
-                                    Text("Refresh")
+                                    Text("Delete routes")
                                 }
 
                                 Button(onClick = {
@@ -191,31 +194,34 @@ fun AppAndroidPreview() {
 }
 
 @Composable
-fun RoutesDropdownMenu() {
-
-    val routesList = listOf("Route 1", "Route 2", "Route 3") // Replace with actual routes
+fun RoutesDropdownMenu(routes: List<String>) {
     var expandedDropdown by remember { mutableStateOf(false) }
-    var selectedRoute by remember { mutableStateOf(routesList[0]) }
+    var selectedRoute by remember { mutableStateOf("No routes") }
 
     Box(
-        modifier = Modifier.width(100.dp),
+        modifier = Modifier.width(150.dp),
         contentAlignment = Alignment.TopStart
     ) {
-        Button(onClick = { expandedDropdown = true }) {
-            Text(selectedRoute)
-        }
-        DropdownMenu(
-            expanded = expandedDropdown,
-            onDismissRequest = { expandedDropdown = false }
+        Button(
+            onClick = { expandedDropdown = true },
+            enabled = routes.isNotEmpty()
         ) {
-            routesList.forEach { route ->
-                DropdownMenuItem(
-                    text = { Text(text = route) },
-                    onClick = {
-                        selectedRoute = route
-                        expandedDropdown = false
-                    }
-                )
+            Text(if (routes.isNotEmpty()) selectedRoute else "No routes")
+        }
+        if (routes.isNotEmpty()) {
+            DropdownMenu(
+                expanded = expandedDropdown,
+                onDismissRequest = { expandedDropdown = false }
+            ) {
+                routes.forEach { route ->
+                    DropdownMenuItem(
+                        text = { Text(text = route) },
+                        onClick = {
+                            selectedRoute = route
+                            expandedDropdown = false
+                        }
+                    )
+                }
             }
         }
     }
@@ -223,7 +229,7 @@ fun RoutesDropdownMenu() {
 
 @OptIn(MapsComposeExperimentalApi::class)
 @Composable
-fun MyMap(mapViewModel: MapViewModel = koinViewModel()) {
+fun MyMap(mapViewModel: MapViewModel) {
     // Set properties using MapProperties composable
     val mapProperties = MapProperties(
         isMyLocationEnabled = true

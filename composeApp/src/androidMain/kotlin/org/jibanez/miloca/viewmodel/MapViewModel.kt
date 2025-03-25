@@ -48,4 +48,10 @@ class MapViewModel(
             }
         }
     }
+
+    fun deleteAllLocations() {
+        viewModelScope.launch {
+            repository.deleteAllLocations()
+        }
+    }
 }
