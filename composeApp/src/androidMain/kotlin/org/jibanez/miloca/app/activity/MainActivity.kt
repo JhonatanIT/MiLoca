@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -24,6 +25,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -78,10 +80,52 @@ class MainActivity() : ComponentActivity() {
 
             val routes by mapViewModel.routes.collectAsState(initial = emptyList())
 
+            var showDialog by remember { mutableStateOf(false) }
+            var routeName by remember { mutableStateOf("") }
+
+            if (showDialog) {
+                AlertDialog(
+                    onDismissRequest = { showDialog = false },
+                    title = { Text("Enter Route Name") },
+                    text = {
+                        TextField(
+                            value = routeName,
+                            onValueChange = { routeName = it },
+                            label = { Text("Route Name") }
+                        )
+                    },
+                    confirmButton = {
+                        Button(onClick = {
+                            showDialog = false
+                            Intent(applicationContext, LocationService::class.java).apply {
+                                action = LocationService.ACTION_START
+                                putExtra("ROUTE_NAME", routeName)
+                                applicationContext.startForegroundService(this)
+                            }
+
+                            Intent(applicationContext, SensorService::class.java).apply {
+                                action = SensorService.ACTION_START
+                                applicationContext.startForegroundService(this)
+                            }
+                        }) {
+                            Text("Start")
+                        }
+                    },
+                    dismissButton = {
+                        Button(onClick = { showDialog = false }) {
+                            Text("Cancel")
+                        }
+                    }
+                )
+            }
+
+
             MaterialTheme {
 
                 Scaffold(
-                    modifier = Modifier.fillMaxSize().padding(16.dp),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
                 ) { paddingValues ->
                     Column(
                         modifier = Modifier
@@ -104,15 +148,7 @@ class MainActivity() : ComponentActivity() {
                             ) {
 
                                 Button(onClick = {
-                                    Intent(applicationContext, LocationService::class.java).apply {
-                                        action = LocationService.ACTION_START
-                                        applicationContext.startForegroundService(this)
-                                    }
-
-                                    Intent(applicationContext, SensorService::class.java).apply {
-                                        action = SensorService.ACTION_START
-                                        applicationContext.startForegroundService(this)
-                                    }
+                                    showDialog = true
                                 }) {
                                     Row(
                                         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -133,6 +169,9 @@ class MainActivity() : ComponentActivity() {
                                         action = SensorService.ACTION_STOP
                                         startService(this)
                                     }
+
+                                    // Reload locations points
+                                    mapViewModel.loadRouteIds()
                                 }) {
                                     Row(
                                         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -238,6 +277,9 @@ fun MyMap(mapViewModel: MapViewModel) {
 
     // Collect the locations from the StateFlow
     mapViewModel.loadLocationsPoints()
+
+    //TODO select by default the first route
+    //TODO just show points of the selected route
     val locations by mapViewModel.locationsPoints.collectAsState(initial = emptyList())
 
     // Marker of Lima

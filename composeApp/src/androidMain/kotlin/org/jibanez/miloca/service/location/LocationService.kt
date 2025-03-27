@@ -23,7 +23,6 @@ import org.jibanez.miloca.entity.LocationPoint
 import org.jibanez.miloca.repository.DatabaseProvider
 import org.jibanez.miloca.repository.LocationRepository
 import org.koin.android.ext.android.inject
-import java.util.UUID
 
 /**
  * Service to track location updates and display them in a notification.
@@ -32,7 +31,9 @@ class LocationService: Service() {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val locationClient: LocationClient by inject()
-    private var currentRouteId: String = ""
+//    private var currentRouteId: String = ""
+    private var routeName: String = ""
+
 
     override fun onBind(p0: Intent?): IBinder? {
         return null
@@ -43,6 +44,10 @@ class LocationService: Service() {
      *
      */
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+
+        val routeName = intent?.getStringExtra("ROUTE_NAME") ?: "Unnamed Route"
+        this.routeName = routeName
+
         when(intent?.action) {
             ACTION_START -> start()
             ACTION_STOP -> stop()
@@ -79,12 +84,12 @@ class LocationService: Service() {
                 notificationManager.notify(1, updatedNotification.build())
 
                 // Create unique route ID for this tracking session
-                currentRouteId = UUID.randomUUID().toString()
+//                currentRouteId = UUID.randomUUID().toString()
 
                 val locationPoint = LocationPoint(
                     latitude = location.latitude,
                     longitude = location.longitude,
-                    routeId = currentRouteId,
+                    routeId = routeName,
                     altitude = location.altitude,
                 )
 

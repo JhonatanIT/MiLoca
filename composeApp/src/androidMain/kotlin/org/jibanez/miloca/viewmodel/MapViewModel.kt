@@ -22,11 +22,7 @@ class MapViewModel(
     val locationsPoints: StateFlow<List<LatLng>> = _locationsPoints
 
     init {
-        viewModelScope.launch {
-            repository.getAllRouteIds().collectLatest { routeIds ->
-                _routes.value = routeIds
-            }
-        }
+        loadRouteIds()
     }
 
     fun loadRoutePoints(routeId: String) {
@@ -45,6 +41,14 @@ class MapViewModel(
                 _locationsPoints.value = points.map {
                     LatLng(it.latitude, it.longitude)
                 }
+            }
+        }
+    }
+
+    fun loadRouteIds() {
+        viewModelScope.launch {
+            repository.getAllRouteIds().collectLatest { routeIds ->
+                _routes.value = routeIds
             }
         }
     }
