@@ -184,6 +184,7 @@ class MainActivity() : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         stopService(Intent(applicationContext, LocationService::class.java))
+        stopService(Intent(applicationContext, SensorService::class.java))
     }
 }
 

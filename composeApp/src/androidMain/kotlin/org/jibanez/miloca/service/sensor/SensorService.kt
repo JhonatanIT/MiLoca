@@ -17,12 +17,14 @@ import androidx.core.app.ServiceCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import org.jibanez.miloca.R
 import org.jibanez.miloca.app.LocationApp
 
 
-class SensorService: Service(), SensorEventListener {
+class SensorService : Service(), SensorEventListener {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var sensorManager: SensorManager
@@ -32,7 +34,7 @@ class SensorService: Service(), SensorEventListener {
         .setContentText("Sensors: ...loading")
         .setSmallIcon(R.drawable.ic_launcher_background)
         .setOngoing(true)
-    private val notificationManager : NotificationManager by lazy {
+    private val notificationManager: NotificationManager by lazy {
         getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     }
 
@@ -51,7 +53,7 @@ class SensorService: Service(), SensorEventListener {
      *
      */
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        when(intent?.action) {
+        when (intent?.action) {
             ACTION_START -> start()
             ACTION_STOP -> stop()
         }
@@ -63,58 +65,70 @@ class SensorService: Service(), SensorEventListener {
      */
     private fun start() {
 
-        //TODO include more sensors TYPE_GRAVITY
-        //Light sensor
-        val lightSensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT)
-        lightSensor?.let { sensor ->
-            sensorManager.registerListener(
-                this,
-                sensor,
-                SensorManager.SENSOR_DELAY_NORMAL
-            )
-        }
-
-        //Linear acceleration sensor
-        val linearAccelerationSensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)   //Will be resources optimized with TYPE_ACCELEROMETER
-        linearAccelerationSensor?.let { sensor ->
-            sensorManager.registerListener(
-                this,
-                sensor,
-                SensorManager.SENSOR_DELAY_NORMAL
-            )
-        }
-
-        try {
-            ServiceCompat.startForeground(this,1, notification.build(),
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                        ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+        serviceScope.launch {
+            try {
+                ServiceCompat.startForeground(
+                    this@SensorService, 1, notification.build(),
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                            ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                        } else {
+                            0
+                        }
                     } else {
-                       0
+                        0
                     }
-                } else {
-                    0
+                )
+
+                //TODO include more sensors TYPE_GRAVITY
+                //Light sensor
+                val lightSensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT)
+                lightSensor?.let { sensor ->
+                    sensorManager.registerListener(
+                        this@SensorService,
+                        sensor,
+                        SensorManager.SENSOR_DELAY_NORMAL
+                    )
                 }
-            )
-        } catch (e: Exception) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-                && e is ForegroundServiceStartNotAllowedException
-            ) {
-                println("App not in a valid state to start foreground service") // (e.g. started from bg)
+
+                //Linear acceleration sensor
+                val linearAccelerationSensor: Sensor? =
+                    sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)   //Will be resources optimized with TYPE_ACCELEROMETER
+                linearAccelerationSensor?.let { sensor ->
+                    sensorManager.registerListener(
+                        this@SensorService,
+                        sensor,
+                        SensorManager.SENSOR_DELAY_NORMAL
+                    )
+                }
+
+                // Keep the coroutine alive until cancellation
+                awaitCancellation()
+
+            } catch (e: Exception) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                    && e is ForegroundServiceStartNotAllowedException
+                ) {
+                    println("App not in a valid state to start foreground service") // (e.g. started from bg)
+                }
+                println("Error starting foreground service: ${e.message}")
+            } finally {
+                // Cleanup when the scope is cancelled
+                sensorManager.unregisterListener(this@SensorService)
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf()
             }
-            println("Error starting foreground service: ${e.message}")
         }
     }
 
     private fun stop() {
-        sensorManager.unregisterListener(this)
+        sensorManager.unregisterListener(this@SensorService)
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
 
-    //TODO When the app is terminated, the service dont stop, Fix it!
     override fun onDestroy() {
-        sensorManager.unregisterListener(this)
+        sensorManager.unregisterListener(this@SensorService)
         super.onDestroy()
         serviceScope.cancel()
     }
@@ -126,20 +140,22 @@ class SensorService: Service(), SensorEventListener {
 
     override fun onSensorChanged(event: SensorEvent) {
         val updatedNotification = notification.setContentText(
-            when(event.sensor.type) {
+            when (event.sensor.type) {
                 Sensor.TYPE_LIGHT -> {
                     "Light: ${event.values.last()} lux"
                 }
+
                 Sensor.TYPE_LINEAR_ACCELERATION -> {
                     "Linear acceleration: ${event.values.joinToString("-")} m/s^2"
                 }
+
                 else -> {
                     "Sensor: ${event.sensor.name} - ${event.values.joinToString()}"
                 }
             }
         )
 
-        if(event.sensor.type == Sensor.TYPE_LINEAR_ACCELERATION) {
+        if (event.sensor.type == Sensor.TYPE_LINEAR_ACCELERATION) {
             println("Linear acceleration: ${event.values.joinToString("-")} m/s^2")
         } else {
             notificationManager.notify(1, updatedNotification.build())
@@ -147,6 +163,6 @@ class SensorService: Service(), SensorEventListener {
     }
 
     override fun onAccuracyChanged(sensor: Sensor, p1: Int) {
-        println( "Sensor accuracy changed: ${sensor.name} - $p1")
+        println("Sensor accuracy changed: ${sensor.name} - $p1")
     }
 }
