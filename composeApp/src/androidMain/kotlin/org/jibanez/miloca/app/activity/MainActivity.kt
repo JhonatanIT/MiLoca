@@ -27,6 +27,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
@@ -39,6 +41,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
+import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
@@ -184,7 +187,7 @@ class MainActivity() : ComponentActivity() {
                             }
                         }
 
-                        MyMap(mapViewModel)
+                        MyMap(mapViewModel, currentLocation)
                         currentLocation.value?.let { location ->
                             Text(text = location)
                         }
@@ -269,7 +272,7 @@ fun RoutesDropdownMenu(routes: List<String>) {
 
 @OptIn(MapsComposeExperimentalApi::class)
 @Composable
-fun MyMap(mapViewModel: MapViewModel) {
+fun MyMap(mapViewModel: MapViewModel, currentLocation: State<String?>) {
     // Set properties using MapProperties composable
     val mapProperties = MapProperties(
         isMyLocationEnabled = true
@@ -289,6 +292,8 @@ fun MyMap(mapViewModel: MapViewModel) {
 
     // Calculate the center location (only if there are locations)
     val centerLocation = remember(locations) {
+
+        // Use the average of all locations if available
         if (locations.isNotEmpty()) {
             LatLng(
                 locations.map { it.latitude }.average(),
@@ -300,10 +305,23 @@ fun MyMap(mapViewModel: MapViewModel) {
         }
     }
 
-
     // Remember camera position state
     val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(centerLocation, 10f)
+        position = CameraPosition.fromLatLngZoom(centerLocation, 15f)
+    }
+
+    // Update camera position when current location changes
+    LaunchedEffect(currentLocation.value) {
+        currentLocation.value?.let { location ->
+            val currentLocationSplit = location.split(",")
+            val currentLatLng = LatLng(
+                currentLocationSplit[0].toDouble(),
+                currentLocationSplit[1].toDouble()
+            )
+            cameraPositionState.animate(
+                CameraUpdateFactory.newLatLngZoom(currentLatLng, cameraPositionState.position.zoom)
+            )
+        }
     }
 
 
@@ -317,7 +335,7 @@ fun MyMap(mapViewModel: MapViewModel) {
     }
 
     GoogleMap(
-        modifier = Modifier.height(400.dp),
+        modifier = Modifier.height(500.dp),
         cameraPositionState = cameraPositionState,
         properties = mapProperties,
         uiSettings = mapUiSettings

@@ -19,7 +19,6 @@ import org.jibanez.miloca.service.location.LocationClient
  *
  */
 
-//TODO use Koin
 class LocationViewModel(application: Application, private val locationClient: LocationClient) : AndroidViewModel(application) {
 
     private val _locationData = MutableLiveData<String>()
@@ -33,7 +32,8 @@ class LocationViewModel(application: Application, private val locationClient: Lo
                 locationClient.getLocationUpdates(interval).collect { location ->
                     val lat = location.latitude.toString()
                     val long = location.longitude.toString()
-                    _locationData.postValue("Location: ($lat, $long)")
+                    val height = location.altitude.toString()
+                    _locationData.postValue("$lat,$long,$height")
                 }
             }
         } else {
