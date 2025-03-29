@@ -53,6 +53,7 @@ import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
+import kotlinx.coroutines.delay
 import org.jibanez.miloca.App
 import org.jibanez.miloca.service.location.LocationService
 import org.jibanez.miloca.service.sensor.SensorService
@@ -148,68 +149,46 @@ class MainActivity() : ComponentActivity() {
                             verticalAlignment = Alignment.CenterVertically
                         ) {
 
-
                             // Route selected from the dropdown menu
                             RoutesDropdownMenu(routes) { route ->
                                 routeSelected = route
                             }
 
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-
-                                Button(
-                                    onClick = {
-                                        showDialog = true
-                                    },
-                                    enabled = !isRecording
-                                ) {
-                                    Row(
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(Icons.Default.PlayArrow, contentDescription = "Start")
-                                        Text(text = "Start")
+                            RecordingControls(
+                                isRecording = isRecording,
+                                onStartClick = { showDialog = true },
+                                onStopClick = {
+                                    Intent(
+                                        applicationContext,
+                                        LocationService::class.java
+                                    ).apply {
+                                        action = LocationService.ACTION_STOP
+                                        startService(this)
                                     }
 
-                                }
-                                Button(
-                                    onClick = {
-                                        Intent(
-                                            applicationContext,
-                                            LocationService::class.java
-                                        ).apply {
-                                            action = LocationService.ACTION_STOP
-                                            startService(this)
-                                        }
-
-                                        Intent(
-                                            applicationContext,
-                                            SensorService::class.java
-                                        ).apply {
-                                            action = SensorService.ACTION_STOP
-                                            startService(this)
-                                        }
-
-                                        // Reload locations points
-                                        mapViewModel.loadRouteIds()
-
-                                        isRecording = false
-                                    },
-                                    enabled = isRecording
-                                ) {
-                                    Row(
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(Icons.Default.Close, contentDescription = "Stop")
-                                        Text(text = "Stop")
+                                    Intent(
+                                        applicationContext,
+                                        SensorService::class.java
+                                    ).apply {
+                                        action = SensorService.ACTION_STOP
+                                        startService(this)
                                     }
+
+                                    // Reload locations points
+                                    mapViewModel.loadRouteIds()
+
+                                    isRecording = false
                                 }
-                            }
+                            )
                         }
 
                         MyMap(mapViewModel, currentLocation, routeSelected)
+
+                        BlinkingMessage(
+                            message = "Press start to create a new route ...",
+                            isVisible = routes.isEmpty()
+                        )
+
                         currentLocation.value?.let { location ->
                             Text(text = location)
                         }
@@ -228,12 +207,6 @@ class MainActivity() : ComponentActivity() {
                                     mapViewModel.deleteAllLocations()
                                 }) {
                                     Text("Delete routes")
-                                }
-
-                                Button(onClick = {
-
-                                }) {
-                                    Text("Reset")
                                 }
                             }
                         }
@@ -299,6 +272,44 @@ fun RoutesDropdownMenu(
                         }
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecordingControls(
+    isRecording: Boolean,
+    onStartClick: () -> Unit,
+    onStopClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = modifier
+    ) {
+        Button(
+            onClick = onStartClick,
+            enabled = !isRecording
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.PlayArrow, contentDescription = "Start")
+                Text(text = "Start")
+            }
+        }
+        Button(
+            onClick = onStopClick,
+            enabled = isRecording
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.Close, contentDescription = "Stop")
+                Text(text = "Stop")
             }
         }
     }
@@ -394,6 +405,39 @@ fun MyMap(mapViewModel: MapViewModel, currentLocation: State<String?>, routeSele
         MapEffect(Unit) { map ->
             map.setOnPoiClickListener { poi ->
                 println("POI clicked: ${poi.name}")
+            }
+        }
+    }
+}
+
+@Composable
+private fun BlinkingMessage(
+    modifier: Modifier = Modifier,
+    message: String,
+    isVisible: Boolean = true
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(48.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        if (isVisible) {
+            var visible by remember { mutableStateOf(true) }
+
+            LaunchedEffect(Unit) {
+                while (true) {
+                    delay(400)
+                    visible = !visible
+                }
+            }
+
+            if (visible) {
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
         }
     }
