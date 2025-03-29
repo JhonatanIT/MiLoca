@@ -85,6 +85,9 @@ class MainActivity() : ComponentActivity() {
 
             var showDialog by remember { mutableStateOf(false) }
             var routeName by remember { mutableStateOf("") }
+            var isRecording by remember { mutableStateOf(false) }
+
+            var routeSelected by remember { mutableStateOf("") }
 
             if (showDialog) {
                 AlertDialog(
@@ -100,6 +103,7 @@ class MainActivity() : ComponentActivity() {
                     confirmButton = {
                         Button(onClick = {
                             showDialog = false
+                            isRecording = true
                             Intent(applicationContext, LocationService::class.java).apply {
                                 action = LocationService.ACTION_START
                                 putExtra("ROUTE_NAME", routeName)
@@ -144,15 +148,22 @@ class MainActivity() : ComponentActivity() {
                             verticalAlignment = Alignment.CenterVertically
                         ) {
 
-                            RoutesDropdownMenu(routes)
+
+                            // Route selected from the dropdown menu
+                            RoutesDropdownMenu(routes) { route ->
+                                routeSelected = route
+                            }
 
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
 
-                                Button(onClick = {
-                                    showDialog = true
-                                }) {
+                                Button(
+                                    onClick = {
+                                        showDialog = true
+                                    },
+                                    enabled = !isRecording
+                                ) {
                                     Row(
                                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                                         verticalAlignment = Alignment.CenterVertically
@@ -162,20 +173,31 @@ class MainActivity() : ComponentActivity() {
                                     }
 
                                 }
-                                Button(onClick = {
-                                    Intent(applicationContext, LocationService::class.java).apply {
-                                        action = LocationService.ACTION_STOP
-                                        startService(this)
-                                    }
+                                Button(
+                                    onClick = {
+                                        Intent(
+                                            applicationContext,
+                                            LocationService::class.java
+                                        ).apply {
+                                            action = LocationService.ACTION_STOP
+                                            startService(this)
+                                        }
 
-                                    Intent(applicationContext, SensorService::class.java).apply {
-                                        action = SensorService.ACTION_STOP
-                                        startService(this)
-                                    }
+                                        Intent(
+                                            applicationContext,
+                                            SensorService::class.java
+                                        ).apply {
+                                            action = SensorService.ACTION_STOP
+                                            startService(this)
+                                        }
 
-                                    // Reload locations points
-                                    mapViewModel.loadRouteIds()
-                                }) {
+                                        // Reload locations points
+                                        mapViewModel.loadRouteIds()
+
+                                        isRecording = false
+                                    },
+                                    enabled = isRecording
+                                ) {
                                     Row(
                                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                                         verticalAlignment = Alignment.CenterVertically
@@ -187,7 +209,7 @@ class MainActivity() : ComponentActivity() {
                             }
                         }
 
-                        MyMap(mapViewModel, currentLocation)
+                        MyMap(mapViewModel, currentLocation, routeSelected)
                         currentLocation.value?.let { location ->
                             Text(text = location)
                         }
@@ -237,9 +259,20 @@ fun AppAndroidPreview() {
 }
 
 @Composable
-fun RoutesDropdownMenu(routes: List<String>) {
+fun RoutesDropdownMenu(
+    routes: List<String>,
+    onRouteSelected: (String) -> Unit = {}
+) {
     var expandedDropdown by remember { mutableStateOf(false) }
     var selectedRoute by remember { mutableStateOf("No routes") }
+
+    // Set the selected route to the first one in the list if available
+    LaunchedEffect(routes) {
+        if (routes.isNotEmpty()) {
+            selectedRoute = routes[0]
+            onRouteSelected(selectedRoute)
+        }
+    }
 
     Box(
         modifier = Modifier.width(150.dp),
@@ -262,6 +295,7 @@ fun RoutesDropdownMenu(routes: List<String>) {
                         onClick = {
                             selectedRoute = route
                             expandedDropdown = false
+                            onRouteSelected(selectedRoute)
                         }
                     )
                 }
@@ -272,18 +306,19 @@ fun RoutesDropdownMenu(routes: List<String>) {
 
 @OptIn(MapsComposeExperimentalApi::class)
 @Composable
-fun MyMap(mapViewModel: MapViewModel, currentLocation: State<String?>) {
+fun MyMap(mapViewModel: MapViewModel, currentLocation: State<String?>, routeSelected: String) {
     // Set properties using MapProperties composable
     val mapProperties = MapProperties(
         isMyLocationEnabled = true
     )
 
-    // Collect the locations from the StateFlow
-    mapViewModel.loadLocationsPoints()
+//    mapViewModel.loadLocationsPoints()
+//    val locations by mapViewModel.locationsPoints.collectAsState(initial = emptyList())
 
-    //TODO select by default the first route
-    //TODO just show points of the selected route
-    val locations by mapViewModel.locationsPoints.collectAsState(initial = emptyList())
+    // Collect the locations from the StateFlow
+    mapViewModel.loadRoutePoints(routeSelected)
+    val locationsByRoute by mapViewModel.selectedRoutePoints.collectAsState(initial = emptyList())
+
 
     // Marker of Lima
     val lima = remember { LatLng(-12.046374, -77.042793) }
@@ -291,13 +326,13 @@ fun MyMap(mapViewModel: MapViewModel, currentLocation: State<String?>) {
     val limaSnippet = "Capital of Peru"
 
     // Calculate the center location (only if there are locations)
-    val centerLocation = remember(locations) {
+    val centerLocation = remember(locationsByRoute) {
 
         // Use the average of all locations if available
-        if (locations.isNotEmpty()) {
+        if (locationsByRoute.isNotEmpty()) {
             LatLng(
-                locations.map { it.latitude }.average(),
-                locations.map { it.longitude }.average()
+                locationsByRoute.map { it.latitude }.average(),
+                locationsByRoute.map { it.longitude }.average()
             )
         } else {
             // Default center if no locations are available
@@ -349,9 +384,9 @@ fun MyMap(mapViewModel: MapViewModel, currentLocation: State<String?>) {
         )
         // Primary polyline connecting all locations
         Polyline(
-            points = locations,
+            points = locationsByRoute,
             color = Color(0xFF0000FF), // Blue color
-            width = 5f,
+            width = 10f,
             clickable = true,
             jointType = com.google.android.gms.maps.model.JointType.ROUND
         )
