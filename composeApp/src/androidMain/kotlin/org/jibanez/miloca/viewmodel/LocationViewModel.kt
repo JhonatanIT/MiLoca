@@ -7,6 +7,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jibanez.miloca.service.location.LocationClient
 
@@ -23,21 +24,31 @@ class LocationViewModel(application: Application, private val locationClient: Lo
 
     private val _locationData = MutableLiveData<String>()
     val locationData: LiveData<String> get() = _locationData
+    companion object {
+        const val GPS_NETWORK_DISABLED_MESSAGE = "GPS or NETWORK disabled"
+    }
 
     fun startLocationUpdates(interval: Long) {
-        if (isNetworkAndGPSEnabled()) {
-            //Coroutine scope that is tied to the lifecycle of the ViewModel
-            viewModelScope.launch {
-                //For each location update, update the location data - Kotlin Flow
-                locationClient.getLocationUpdates(interval).collect { location ->
-                    val lat = location.latitude.toString()
-                    val long = location.longitude.toString()
-                    val height = location.altitude.toString()
-                    _locationData.postValue("$lat,$long,$height")
+
+        viewModelScope.launch {
+            while (true) {
+                if (!isNetworkAndGPSEnabled()) {
+                    _locationData.postValue(GPS_NETWORK_DISABLED_MESSAGE)
+                    delay(interval)
+                    continue
+                }
+
+                try {
+                    locationClient.getLocationUpdates(interval).collect { location ->
+                        val lat = location.latitude.toString()
+                        val long = location.longitude.toString()
+                        val height = location.altitude.toString()
+                        _locationData.postValue("$lat,$long,$height")
+                    }
+                } catch (e: LocationClient.LocationException) {
+                    _locationData.postValue("Location error: ${e.message}")
                 }
             }
-        } else {
-            _locationData.postValue("GPS or NETWORK disabled")
         }
     }
 

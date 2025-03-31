@@ -177,6 +177,7 @@ class MainActivity : ComponentActivity() {
 
                             RecordingControls(
                                 isRecording = isRecording,
+                                isLocationEnabled = currentLocation.value != LocationViewModel.GPS_NETWORK_DISABLED_MESSAGE,
                                 onStartClick = { showDialog = true },
                                 onStopClick = {
                                     Intent(

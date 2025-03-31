@@ -22,6 +22,7 @@ import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.Polyline
 import com.google.maps.android.compose.rememberCameraPositionState
+import org.jibanez.miloca.viewmodel.LocationViewModel
 import org.jibanez.miloca.viewmodel.MapViewModel
 
 @OptIn(MapsComposeExperimentalApi::class)
@@ -66,7 +67,7 @@ fun MyMap(mapViewModel: MapViewModel, currentLocation: State<String?>, routeSele
     LaunchedEffect(currentLocation.value) {
         currentLocation.value?.let { location ->
 
-            if ("GPS or NETWORK disabled" != location) {
+            if (LocationViewModel.GPS_NETWORK_DISABLED_MESSAGE != location) {
                 val currentLocationSplit = location.split(",")
                 val currentLatLng = LatLng(
                     currentLocationSplit[0].toDouble(),

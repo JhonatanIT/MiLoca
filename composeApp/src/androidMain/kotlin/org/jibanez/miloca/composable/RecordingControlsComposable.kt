@@ -16,17 +16,21 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun RecordingControls(
     isRecording: Boolean,
+    isLocationEnabled: Boolean,
     onStartClick: () -> Unit,
     onStopClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+
+    //TODO add follow button
+    //TODO when start a route dont draw the previous route selected
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = modifier
     ) {
         Button(
             onClick = onStartClick,
-            enabled = !isRecording
+            enabled = !isRecording && isLocationEnabled
         ) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -38,7 +42,7 @@ fun RecordingControls(
         }
         Button(
             onClick = onStopClick,
-            enabled = isRecording
+            enabled = isRecording && isLocationEnabled
         ) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
