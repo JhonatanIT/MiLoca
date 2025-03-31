@@ -19,44 +19,48 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun RoutesDropdownMenu(
     routes: List<String>,
+    isRecording: Boolean,
     onRouteSelected: (String) -> Unit = {}
 ) {
     val NO_ROUTES = "No routes"
     var expandedDropdown by remember { mutableStateOf(false) }
     var selectedRoute by remember { mutableStateOf(NO_ROUTES) }
 
-    // Set the selected route to the first one in the list if available
-    LaunchedEffect(routes) {
-        if (routes.isNotEmpty()) {
-            selectedRoute = routes[0]
-            onRouteSelected(selectedRoute)
-        }
-    }
+    if (!isRecording) {
 
-    Box(
-        modifier = Modifier.width(150.dp),
-        contentAlignment = Alignment.TopStart
-    ) {
-        Button(
-            onClick = { expandedDropdown = true },
-            enabled = routes.isNotEmpty()
-        ) {
-            Text(if (routes.isNotEmpty()) selectedRoute else NO_ROUTES)
+        // Set the selected route to the last one in the list if available
+        LaunchedEffect(routes) {
+            if (routes.isNotEmpty()) {
+                selectedRoute = routes[routes.size - 1]
+                onRouteSelected(selectedRoute)
+            }
         }
-        if (routes.isNotEmpty()) {
-            DropdownMenu(
-                expanded = expandedDropdown,
-                onDismissRequest = { expandedDropdown = false }
+
+        Box(
+            modifier = Modifier.width(150.dp),
+            contentAlignment = Alignment.TopStart
+        ) {
+            Button(
+                onClick = { expandedDropdown = true },
+                enabled = routes.isNotEmpty()
             ) {
-                routes.forEach { route ->
-                    DropdownMenuItem(
-                        text = { Text(text = route) },
-                        onClick = {
-                            selectedRoute = route
-                            expandedDropdown = false
-                            onRouteSelected(selectedRoute)
-                        }
-                    )
+                Text(if (routes.isNotEmpty()) selectedRoute else NO_ROUTES)
+            }
+            if (routes.isNotEmpty()) {
+                DropdownMenu(
+                    expanded = expandedDropdown,
+                    onDismissRequest = { expandedDropdown = false }
+                ) {
+                    routes.forEach { route ->
+                        DropdownMenuItem(
+                            text = { Text(text = route) },
+                            onClick = {
+                                selectedRoute = route
+                                expandedDropdown = false
+                                onRouteSelected(selectedRoute)
+                            }
+                        )
+                    }
                 }
             }
         }

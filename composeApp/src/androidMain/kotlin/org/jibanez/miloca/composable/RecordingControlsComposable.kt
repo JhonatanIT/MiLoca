@@ -2,6 +2,7 @@ package org.jibanez.miloca.composable
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
@@ -27,21 +28,30 @@ fun RecordingControls(
 ) {
 
     //TODO when start a route dont draw the previous route selected
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = modifier
-    ) {
-        if (!isRecording && isLocationEnabled) {
-            Button(onClick = onStartClick) {
+
+    if (!isRecording) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = modifier
+        ) {
+            Button(onClick = onStartClick, enabled = isLocationEnabled) {
                 IconWithText(Icons.Default.Add, "New")
             }
 
             //TODO add follow feature
-            Button(onClick = onFollowCLick, enabled = routeSelected.isNotEmpty()) {
+            Button(
+                onClick = onFollowCLick,
+                enabled = isLocationEnabled && routeSelected.isNotEmpty()
+            ) {
                 IconWithText(Icons.Default.PlayArrow, "Follow")
             }
-        } else if (isRecording && isLocationEnabled) {
-            Button(onClick = onStopClick) {
+        }
+    } else {
+        Row(
+            horizontalArrangement = Arrangement.Absolute.Right,
+            modifier = modifier.fillMaxWidth()
+        ) {
+            Button(onClick = onStopClick, enabled = isLocationEnabled) {
                 IconWithText(Icons.Default.Close, "Stop")
             }
         }

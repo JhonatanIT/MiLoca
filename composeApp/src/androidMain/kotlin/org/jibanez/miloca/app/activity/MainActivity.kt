@@ -70,7 +70,7 @@ class MainActivity : ComponentActivity() {
             val routes by mapViewModel.routes.collectAsState(initial = emptyList())
 
             var showDialog by remember { mutableStateOf(false) }
-            var routeName by remember { mutableStateOf("") }
+            var newRouteName by remember { mutableStateOf("") }
             var isRecording by remember { mutableStateOf(false) }
 
             var routeSelected by remember { mutableStateOf("") }
@@ -84,10 +84,10 @@ class MainActivity : ComponentActivity() {
                     text = {
                         Column {
                             TextField(
-                                value = routeName,
-                                onValueChange = { routeName = it },
+                                value = newRouteName,
+                                onValueChange = { newRouteName = it },
                                 label = { Text("Route name *") },
-                                isError = routeName.isEmpty()
+                                isError = newRouteName.isEmpty()
                             )
                         }
                     },
@@ -98,7 +98,7 @@ class MainActivity : ComponentActivity() {
                                 isRecording = true
                                 Intent(applicationContext, LocationService::class.java).apply {
                                     action = LocationService.ACTION_START
-                                    putExtra("ROUTE_NAME", routeName)
+                                    putExtra("ROUTE_NAME", newRouteName)
                                     applicationContext.startForegroundService(this)
                                 }
 
@@ -107,7 +107,7 @@ class MainActivity : ComponentActivity() {
                                     applicationContext.startForegroundService(this)
                                 }
                             },
-                            enabled = routeName.isNotEmpty()
+                            enabled = newRouteName.isNotEmpty()
                         ) {
                             Text("Start")
                         }
@@ -178,7 +178,7 @@ class MainActivity : ComponentActivity() {
                         ) {
 
                             // Route selected from the dropdown menu
-                            RoutesDropdownMenu(routes) { route ->
+                            RoutesDropdownMenu(routes,isRecording) { route ->
                                 routeSelected = route
                             }
 
@@ -213,7 +213,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        MyMap(mapViewModel, currentLocation, routeSelected)
+                        MyMap(mapViewModel, currentLocation, if (isRecording) newRouteName else routeSelected)
 
                         BlinkingMessage(
                             message = "Press + to create a new route ...",
@@ -221,7 +221,13 @@ class MainActivity : ComponentActivity() {
                         )
 
                         currentLocation.value?.let { location ->
-                            Text(text = location)
+                            Text(
+                                text = location,
+                                color = if (location == LocationViewModel.GPS_NETWORK_DISABLED_MESSAGE)
+                                    MaterialTheme.colorScheme.error
+                                else
+                                    MaterialTheme.colorScheme.onSurface
+                            )
                         }
 
                         if (isRecording) {
