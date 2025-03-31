@@ -76,32 +76,39 @@ class MainActivity : ComponentActivity() {
             var routeSelected by remember { mutableStateOf("") }
             val context = LocalContext.current
 
+
             if (showDialog) {
                 AlertDialog(
                     onDismissRequest = { showDialog = false },
-                    title = { Text("Enter Route Name") },
+                    title = { Text("Create route") },
                     text = {
-                        TextField(
-                            value = routeName,
-                            onValueChange = { routeName = it },
-                            label = { Text("Route Name") }
-                        )
+                        Column {
+                            TextField(
+                                value = routeName,
+                                onValueChange = { routeName = it },
+                                label = { Text("Route name *") },
+                                isError = routeName.isEmpty()
+                            )
+                        }
                     },
                     confirmButton = {
-                        Button(onClick = {
-                            showDialog = false
-                            isRecording = true
-                            Intent(applicationContext, LocationService::class.java).apply {
-                                action = LocationService.ACTION_START
-                                putExtra("ROUTE_NAME", routeName)
-                                applicationContext.startForegroundService(this)
-                            }
+                        Button(
+                            onClick = {
+                                showDialog = false
+                                isRecording = true
+                                Intent(applicationContext, LocationService::class.java).apply {
+                                    action = LocationService.ACTION_START
+                                    putExtra("ROUTE_NAME", routeName)
+                                    applicationContext.startForegroundService(this)
+                                }
 
-                            Intent(applicationContext, SensorService::class.java).apply {
-                                action = SensorService.ACTION_START
-                                applicationContext.startForegroundService(this)
-                            }
-                        }) {
+                                Intent(applicationContext, SensorService::class.java).apply {
+                                    action = SensorService.ACTION_START
+                                    applicationContext.startForegroundService(this)
+                                }
+                            },
+                            enabled = routeName.isNotEmpty()
+                        ) {
                             Text("Start")
                         }
                     },
@@ -178,7 +185,9 @@ class MainActivity : ComponentActivity() {
                             RecordingControls(
                                 isRecording = isRecording,
                                 isLocationEnabled = currentLocation.value != LocationViewModel.GPS_NETWORK_DISABLED_MESSAGE,
+                                routeSelected = routeSelected,
                                 onStartClick = { showDialog = true },
+                                onFollowCLick = { showDialog = true },
                                 onStopClick = {
                                     Intent(
                                         applicationContext,
@@ -207,7 +216,7 @@ class MainActivity : ComponentActivity() {
                         MyMap(mapViewModel, currentLocation, routeSelected)
 
                         BlinkingMessage(
-                            message = "Press start to create a new route ...",
+                            message = "Press + to create a new route ...",
                             isVisible = routes.isEmpty()
                         )
 

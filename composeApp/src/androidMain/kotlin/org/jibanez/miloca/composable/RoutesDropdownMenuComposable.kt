@@ -21,8 +21,9 @@ fun RoutesDropdownMenu(
     routes: List<String>,
     onRouteSelected: (String) -> Unit = {}
 ) {
+    val NO_ROUTES = "No routes"
     var expandedDropdown by remember { mutableStateOf(false) }
-    var selectedRoute by remember { mutableStateOf("No routes") }
+    var selectedRoute by remember { mutableStateOf(NO_ROUTES) }
 
     // Set the selected route to the first one in the list if available
     LaunchedEffect(routes) {
@@ -40,7 +41,7 @@ fun RoutesDropdownMenu(
             onClick = { expandedDropdown = true },
             enabled = routes.isNotEmpty()
         ) {
-            Text(if (routes.isNotEmpty()) selectedRoute else "No routes")
+            Text(if (routes.isNotEmpty()) selectedRoute else NO_ROUTES)
         }
         if (routes.isNotEmpty()) {
             DropdownMenu(
