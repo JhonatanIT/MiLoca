@@ -139,25 +139,34 @@ class SensorService : Service(), SensorEventListener {
     }
 
     override fun onSensorChanged(event: SensorEvent) {
-        val updatedNotification = notification.setContentText(
-            when (event.sensor.type) {
-                Sensor.TYPE_LIGHT -> {
-                    "Light: ${event.values.last()} lux"
-                }
 
-                Sensor.TYPE_LINEAR_ACCELERATION -> {
-                    "Linear acceleration: ${event.values.joinToString("-")} m/s^2"
-                }
+        val sensorType = event.sensor.type
 
-                else -> {
-                    "Sensor: ${event.sensor.name} - ${event.values.joinToString()}"
-                }
+        val intentAction = when (sensorType) {
+            Sensor.TYPE_LIGHT -> "TYPE_LIGHT"
+            Sensor.TYPE_LINEAR_ACCELERATION -> "TYPE_LINEAR_ACCELERATION"
+            else -> null
+        }
+
+        intentAction?.let {
+            val sensorIntent = Intent(it).apply {
+                putExtra("values", event.values)
             }
-        )
+            sendBroadcast(sensorIntent)
+        }
 
-        if (event.sensor.type == Sensor.TYPE_LINEAR_ACCELERATION) {
-            println("Linear acceleration: ${event.values.joinToString("-")} m/s^2")
-        } else {
+        // Foreground service notification update
+        if (sensorType == Sensor.TYPE_LIGHT) {
+
+            val sensorValues = event.values.joinToString("-")
+            val updatedText = when (sensorType) {
+                Sensor.TYPE_LIGHT -> "Light: ${event.values.last()} lux"
+//                Sensor.TYPE_LINEAR_ACCELERATION -> "Linear acceleration: $sensorValues m/s^2"
+                else -> "Sensor: ${event.sensor.name} - $sensorValues"
+            }
+
+            val updatedNotification = notification.setContentText(updatedText)
+
             notificationManager.notify(1, updatedNotification.build())
         }
     }

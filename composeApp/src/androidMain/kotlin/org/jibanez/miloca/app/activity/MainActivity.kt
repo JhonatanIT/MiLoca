@@ -1,34 +1,27 @@
 package org.jibanez.miloca.app.activity
 
 import android.Manifest
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.State
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
@@ -37,31 +30,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
-import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.model.CameraPosition
-import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.compose.GoogleMap
-import com.google.maps.android.compose.MapEffect
-import com.google.maps.android.compose.MapProperties
-import com.google.maps.android.compose.MapUiSettings
-import com.google.maps.android.compose.MapsComposeExperimentalApi
-import com.google.maps.android.compose.Marker
-import com.google.maps.android.compose.MarkerState
-import com.google.maps.android.compose.Polyline
-import com.google.maps.android.compose.rememberCameraPositionState
-import kotlinx.coroutines.delay
+import androidx.core.content.ContextCompat
 import org.jibanez.miloca.App
+import org.jibanez.miloca.composable.BlinkingMessage
+import org.jibanez.miloca.composable.MyMap
+import org.jibanez.miloca.composable.RecordingControls
+import org.jibanez.miloca.composable.RoutesDropdownMenu
 import org.jibanez.miloca.service.location.LocationService
 import org.jibanez.miloca.service.sensor.SensorService
 import org.jibanez.miloca.viewmodel.LocationViewModel
 import org.jibanez.miloca.viewmodel.MapViewModel
 import org.koin.androidx.compose.koinViewModel
 
-class MainActivity() : ComponentActivity() {
+class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -89,6 +74,7 @@ class MainActivity() : ComponentActivity() {
             var isRecording by remember { mutableStateOf(false) }
 
             var routeSelected by remember { mutableStateOf("") }
+            val context = LocalContext.current
 
             if (showDialog) {
                 AlertDialog(
@@ -127,6 +113,41 @@ class MainActivity() : ComponentActivity() {
                 )
             }
 
+            //TODO dont work in android 14
+            var lightSensor by remember { mutableStateOf<String?>(null) }
+            var linearAccelerationSensor by remember { mutableStateOf<String?>(null) }
+
+            DisposableEffect(Unit) {
+                val lightReceiver = createReceiver("TYPE_LIGHT") { values ->
+                    lightSensor = "Light: ${values?.last()} lux"
+                }
+                val linearAccelerationReceiver =
+                    createReceiver("TYPE_LINEAR_ACCELERATION") { values ->
+                        val magnitude = values?.let {
+                            kotlin.math.sqrt(it[0] * it[0] + it[1] * it[1] + it[2] * it[2])
+                        } ?: 0f
+                        linearAccelerationSensor =
+                            "Linear acceleration: %.2f m/s²".format(magnitude)
+                    }
+
+                ContextCompat.registerReceiver(
+                    context,
+                    lightReceiver,
+                    IntentFilter("TYPE_LIGHT"),
+                    ContextCompat.RECEIVER_NOT_EXPORTED
+                )
+                ContextCompat.registerReceiver(
+                    context,
+                    linearAccelerationReceiver,
+                    IntentFilter("TYPE_LINEAR_ACCELERATION"),
+                    ContextCompat.RECEIVER_NOT_EXPORTED
+                )
+
+                onDispose {
+                    context.unregisterReceiver(lightReceiver)
+                    context.unregisterReceiver(linearAccelerationReceiver)
+                }
+            }
 
             MaterialTheme {
 
@@ -140,7 +161,7 @@ class MainActivity() : ComponentActivity() {
                             .fillMaxWidth()
                             .padding(paddingValues),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
 
                         Row(
@@ -192,6 +213,15 @@ class MainActivity() : ComponentActivity() {
                         currentLocation.value?.let { location ->
                             Text(text = location)
                         }
+
+                        if (isRecording) {
+                            listOf(lightSensor, linearAccelerationSensor).forEach { sensor ->
+                                sensor?.let { text ->
+                                    Text(text = text, modifier = Modifier.padding(16.dp))
+                                }
+                            }
+                        }
+
                         // Bottom Section
                         Column(
                             modifier = Modifier
@@ -225,220 +255,19 @@ class MainActivity() : ComponentActivity() {
     }
 }
 
+private fun createReceiver(action: String, onReceive: (FloatArray?) -> Unit): BroadcastReceiver {
+    return object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == action) {
+                val values = intent.getFloatArrayExtra("values")
+                onReceive(values)
+            }
+        }
+    }
+}
+
 @Preview
 @Composable
 fun AppAndroidPreview() {
     App()
-}
-
-@Composable
-fun RoutesDropdownMenu(
-    routes: List<String>,
-    onRouteSelected: (String) -> Unit = {}
-) {
-    var expandedDropdown by remember { mutableStateOf(false) }
-    var selectedRoute by remember { mutableStateOf("No routes") }
-
-    // Set the selected route to the first one in the list if available
-    LaunchedEffect(routes) {
-        if (routes.isNotEmpty()) {
-            selectedRoute = routes[0]
-            onRouteSelected(selectedRoute)
-        }
-    }
-
-    Box(
-        modifier = Modifier.width(150.dp),
-        contentAlignment = Alignment.TopStart
-    ) {
-        Button(
-            onClick = { expandedDropdown = true },
-            enabled = routes.isNotEmpty()
-        ) {
-            Text(if (routes.isNotEmpty()) selectedRoute else "No routes")
-        }
-        if (routes.isNotEmpty()) {
-            DropdownMenu(
-                expanded = expandedDropdown,
-                onDismissRequest = { expandedDropdown = false }
-            ) {
-                routes.forEach { route ->
-                    DropdownMenuItem(
-                        text = { Text(text = route) },
-                        onClick = {
-                            selectedRoute = route
-                            expandedDropdown = false
-                            onRouteSelected(selectedRoute)
-                        }
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun RecordingControls(
-    isRecording: Boolean,
-    onStartClick: () -> Unit,
-    onStopClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = modifier
-    ) {
-        Button(
-            onClick = onStartClick,
-            enabled = !isRecording
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Default.PlayArrow, contentDescription = "Start")
-                Text(text = "Start")
-            }
-        }
-        Button(
-            onClick = onStopClick,
-            enabled = isRecording
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Default.Close, contentDescription = "Stop")
-                Text(text = "Stop")
-            }
-        }
-    }
-}
-
-@OptIn(MapsComposeExperimentalApi::class)
-@Composable
-fun MyMap(mapViewModel: MapViewModel, currentLocation: State<String?>, routeSelected: String) {
-    // Set properties using MapProperties composable
-    val mapProperties = MapProperties(
-        isMyLocationEnabled = true
-    )
-
-//    mapViewModel.loadLocationsPoints()
-//    val locations by mapViewModel.locationsPoints.collectAsState(initial = emptyList())
-
-    // Collect the locations from the StateFlow
-    mapViewModel.loadRoutePoints(routeSelected)
-    val locationsByRoute by mapViewModel.selectedRoutePoints.collectAsState(initial = emptyList())
-
-
-    // Marker of Lima
-    val lima = remember { LatLng(-12.046374, -77.042793) }
-    val limaTitle = "Lima"
-    val limaSnippet = "Capital of Peru"
-
-    // Calculate the center location (only if there are locations)
-    val centerLocation = remember(locationsByRoute) {
-
-        // Use the average of all locations if available
-        if (locationsByRoute.isNotEmpty()) {
-            LatLng(
-                locationsByRoute.map { it.latitude }.average(),
-                locationsByRoute.map { it.longitude }.average()
-            )
-        } else {
-            // Default center if no locations are available
-            LatLng(lima.latitude, lima.longitude) // You can set a specific default location here
-        }
-    }
-
-    // Remember camera position state
-    val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(centerLocation, 15f)
-    }
-
-    // Update camera position when current location changes
-    LaunchedEffect(currentLocation.value) {
-        currentLocation.value?.let { location ->
-            val currentLocationSplit = location.split(",")
-            val currentLatLng = LatLng(
-                currentLocationSplit[0].toDouble(),
-                currentLocationSplit[1].toDouble()
-            )
-            cameraPositionState.animate(
-                CameraUpdateFactory.newLatLngZoom(currentLatLng, cameraPositionState.position.zoom)
-            )
-        }
-    }
-
-
-    // Map UI settings
-    val mapUiSettings = remember {
-        MapUiSettings(
-            zoomControlsEnabled = true,
-            compassEnabled = true,
-            mapToolbarEnabled = true
-        )
-    }
-
-    GoogleMap(
-        modifier = Modifier.height(500.dp),
-        cameraPositionState = cameraPositionState,
-        properties = mapProperties,
-        uiSettings = mapUiSettings
-    ) {
-        Marker(
-            remember { MarkerState(position = lima) },
-            title = limaTitle,
-            snippet = limaSnippet,
-            alpha = 0.8f,
-            draggable = true,
-        )
-        // Primary polyline connecting all locations
-        Polyline(
-            points = locationsByRoute,
-            color = Color(0xFF0000FF), // Blue color
-            width = 10f,
-            clickable = true,
-            jointType = com.google.android.gms.maps.model.JointType.ROUND
-        )
-
-        MapEffect(Unit) { map ->
-            map.setOnPoiClickListener { poi ->
-                println("POI clicked: ${poi.name}")
-            }
-        }
-    }
-}
-
-@Composable
-private fun BlinkingMessage(
-    modifier: Modifier = Modifier,
-    message: String,
-    isVisible: Boolean = true
-) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(48.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        if (isVisible) {
-            var visible by remember { mutableStateOf(true) }
-
-            LaunchedEffect(Unit) {
-                while (true) {
-                    delay(400)
-                    visible = !visible
-                }
-            }
-
-            if (visible) {
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-        }
-    }
 }
