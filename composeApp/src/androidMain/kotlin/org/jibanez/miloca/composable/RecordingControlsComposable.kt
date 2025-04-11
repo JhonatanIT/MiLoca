@@ -27,8 +27,6 @@ fun RecordingControls(
     modifier: Modifier = Modifier
 ) {
 
-    //TODO when start a route dont draw the previous route selected
-
     if (!isRecording) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),

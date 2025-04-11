@@ -120,7 +120,6 @@ class MainActivity : ComponentActivity() {
                 )
             }
 
-            //TODO dont work in android 14
             var lightSensor by remember { mutableStateOf<String?>(null) }
             var linearAccelerationSensor by remember { mutableStateOf<String?>(null) }
 
@@ -137,17 +136,18 @@ class MainActivity : ComponentActivity() {
                             "Linear acceleration: %.2f m/s²".format(magnitude)
                     }
 
+                //TODO use RECEIVER_NOT_EXPORTED for better security
                 ContextCompat.registerReceiver(
                     context,
                     lightReceiver,
                     IntentFilter("TYPE_LIGHT"),
-                    ContextCompat.RECEIVER_NOT_EXPORTED
+                    ContextCompat.RECEIVER_EXPORTED
                 )
                 ContextCompat.registerReceiver(
                     context,
                     linearAccelerationReceiver,
                     IntentFilter("TYPE_LINEAR_ACCELERATION"),
-                    ContextCompat.RECEIVER_NOT_EXPORTED
+                    ContextCompat.RECEIVER_EXPORTED
                 )
 
                 onDispose {
@@ -178,7 +178,7 @@ class MainActivity : ComponentActivity() {
                         ) {
 
                             // Route selected from the dropdown menu
-                            RoutesDropdownMenu(routes,isRecording) { route ->
+                            RoutesDropdownMenu(routes, isRecording) { route ->
                                 routeSelected = route
                             }
 
@@ -213,7 +213,11 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        MyMap(mapViewModel, currentLocation, if (isRecording) newRouteName else routeSelected)
+                        MyMap(
+                            mapViewModel,
+                            currentLocation,
+                            if (isRecording) newRouteName else routeSelected
+                        )
 
                         BlinkingMessage(
                             message = "Press + to create a new route ...",
