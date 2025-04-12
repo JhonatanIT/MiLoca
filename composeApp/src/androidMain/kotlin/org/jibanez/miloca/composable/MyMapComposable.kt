@@ -27,7 +27,12 @@ import org.jibanez.miloca.viewmodel.MapViewModel
 
 @OptIn(MapsComposeExperimentalApi::class)
 @Composable
-fun MyMap(mapViewModel: MapViewModel, currentLocation: State<String?>, routeSelected: String) {
+fun MyMap(
+    mapViewModel: MapViewModel,
+    currentLocation: State<String?>,
+    routeSelected: String,
+    isRecording: Boolean
+) {
     // Set properties using MapProperties composable
     val mapProperties = MapProperties(
         isMyLocationEnabled = true
@@ -37,7 +42,6 @@ fun MyMap(mapViewModel: MapViewModel, currentLocation: State<String?>, routeSele
     mapViewModel.loadRoutePoints(routeSelected)
     val locationsByRoute by mapViewModel.selectedRoutePoints.collectAsState(initial = emptyList())
 
-
     // Marker of Lima
     val lima = remember { LatLng(-12.046374, -77.042793) }
     val limaTitle = "Lima"
@@ -46,11 +50,11 @@ fun MyMap(mapViewModel: MapViewModel, currentLocation: State<String?>, routeSele
     // Calculate the center location (only if there are locations)
     val centerLocation = remember(locationsByRoute) {
 
-        // Use the average of all locations if available
+        // Get the first location from the list
         if (locationsByRoute.isNotEmpty()) {
             LatLng(
-                locationsByRoute.map { it.latitude }.average(),
-                locationsByRoute.map { it.longitude }.average()
+                locationsByRoute[0].latitude,
+                locationsByRoute[0].longitude
             )
         } else {
             // Default center if no locations are available
@@ -63,27 +67,6 @@ fun MyMap(mapViewModel: MapViewModel, currentLocation: State<String?>, routeSele
         position = CameraPosition.fromLatLngZoom(centerLocation, 15f)
     }
 
-    // Update camera position when current location changes
-    LaunchedEffect(currentLocation.value) {
-        currentLocation.value?.let { location ->
-
-            if (LocationViewModel.GPS_NETWORK_DISABLED_MESSAGE != location) {
-                val currentLocationSplit = location.split(",")
-                val currentLatLng = LatLng(
-                    currentLocationSplit[0].toDouble(),
-                    currentLocationSplit[1].toDouble()
-                )
-                cameraPositionState.animate(
-                    CameraUpdateFactory.newLatLngZoom(
-                        currentLatLng,
-                        cameraPositionState.position.zoom
-                    )
-                )
-            }
-        }
-    }
-
-
     // Map UI settings
     val mapUiSettings = remember {
         MapUiSettings(
@@ -94,7 +77,7 @@ fun MyMap(mapViewModel: MapViewModel, currentLocation: State<String?>, routeSele
     }
 
     GoogleMap(
-        modifier = Modifier.height(400.dp),
+        modifier = Modifier.height(500.dp),
         cameraPositionState = cameraPositionState,
         properties = mapProperties,
         uiSettings = mapUiSettings
@@ -119,6 +102,40 @@ fun MyMap(mapViewModel: MapViewModel, currentLocation: State<String?>, routeSele
             map.setOnPoiClickListener { poi ->
                 println("POI clicked: ${poi.name}")
             }
+        }
+    }
+
+    if (isRecording) {
+        // Update camera position when is recording
+        LaunchedEffect(currentLocation.value) {
+            currentLocation.value?.let { location ->
+
+                if (LocationViewModel.GPS_NETWORK_DISABLED_MESSAGE != location) {
+                    val currentLocationSplit = location.split(",")
+                    val currentLatLng = LatLng(
+                        currentLocationSplit[0].toDouble(),
+                        currentLocationSplit[1].toDouble()
+                    )
+                    cameraPositionState.animate(
+                        CameraUpdateFactory.newLatLngZoom(
+                            currentLatLng,
+                            cameraPositionState.position.zoom
+                        )
+                    )
+                }
+            }
+        }
+    } else {
+
+        //TODO Just a visual problem when create the first route
+        // Move camera to the center location when a route is selected
+        LaunchedEffect(routeSelected) {
+            cameraPositionState.animate(
+                CameraUpdateFactory.newLatLngZoom(
+                    centerLocation,
+                    15f
+                )
+            )
         }
     }
 }

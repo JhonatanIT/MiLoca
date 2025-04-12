@@ -19,7 +19,6 @@ import org.koin.core.context.startKoin
  */
 class LocationApp: Application() {
 
-    //TODO create a notification channel for each foreground service
     companion object {
         const val LOCATION_CHANNEL_ID = "location_channel"
         const val LOCATION_CHANNEL_NAME = "Location"

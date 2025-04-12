@@ -38,6 +38,7 @@ import androidx.core.content.ContextCompat
 import org.jibanez.miloca.App
 import org.jibanez.miloca.composable.BlinkingMessage
 import org.jibanez.miloca.composable.MyMap
+import org.jibanez.miloca.composable.OnTrackingDataComposable
 import org.jibanez.miloca.composable.RecordingControls
 import org.jibanez.miloca.composable.RoutesDropdownMenu
 import org.jibanez.miloca.service.location.LocationService
@@ -122,10 +123,11 @@ class MainActivity : ComponentActivity() {
 
             var lightSensor by remember { mutableStateOf<String?>(null) }
             var linearAccelerationSensor by remember { mutableStateOf<String?>(null) }
+            var gravitySensor by remember { mutableStateOf<String?>(null) }
 
             DisposableEffect(Unit) {
                 val lightReceiver = createReceiver("TYPE_LIGHT") { values ->
-                    lightSensor = "Light: ${values?.last()} lux"
+                    lightSensor = "Light: %.2f lux".format(values?.last())
                 }
                 val linearAccelerationReceiver =
                     createReceiver("TYPE_LINEAR_ACCELERATION") { values ->
@@ -133,8 +135,11 @@ class MainActivity : ComponentActivity() {
                             kotlin.math.sqrt(it[0] * it[0] + it[1] * it[1] + it[2] * it[2])
                         } ?: 0f
                         linearAccelerationSensor =
-                            "Linear acceleration: %.2f m/s²".format(magnitude)
+                            "Acceleration: %.2f m/s²".format(magnitude)
                     }
+                val gravityReceiver = createReceiver("TYPE_GRAVITY") { values ->
+                    gravitySensor = "Gravity: %.2f m/s²".format(values?.last())
+                }
 
                 //TODO use RECEIVER_NOT_EXPORTED for better security
                 ContextCompat.registerReceiver(
@@ -149,10 +154,17 @@ class MainActivity : ComponentActivity() {
                     IntentFilter("TYPE_LINEAR_ACCELERATION"),
                     ContextCompat.RECEIVER_EXPORTED
                 )
+                ContextCompat.registerReceiver(
+                    context,
+                    gravityReceiver,
+                    IntentFilter("TYPE_GRAVITY"),
+                    ContextCompat.RECEIVER_EXPORTED
+                )
 
                 onDispose {
                     context.unregisterReceiver(lightReceiver)
                     context.unregisterReceiver(linearAccelerationReceiver)
+                    context.unregisterReceiver(gravityReceiver)
                 }
             }
 
@@ -216,47 +228,58 @@ class MainActivity : ComponentActivity() {
                         MyMap(
                             mapViewModel,
                             currentLocation,
-                            if (isRecording) newRouteName else routeSelected
+                            if (isRecording) newRouteName else routeSelected,
+                            isRecording
                         )
 
-                        BlinkingMessage(
-                            message = "Press + to create a new route ...",
-                            isVisible = routes.isEmpty()
-                        )
-
-                        currentLocation.value?.let { location ->
-                            Text(
-                                text = location,
-                                color = if (location == LocationViewModel.GPS_NETWORK_DISABLED_MESSAGE)
-                                    MaterialTheme.colorScheme.error
-                                else
-                                    MaterialTheme.colorScheme.onSurface
+                        if (!isRecording) {
+                            BlinkingMessage(
+                                message = "Press + to create a new route ...",
+                                isVisible = routes.isEmpty()
                             )
                         }
 
-                        if (isRecording) {
-                            listOf(lightSensor, linearAccelerationSensor).forEach { sensor ->
-                                sensor?.let { text ->
-                                    Text(text = text, modifier = Modifier.padding(16.dp))
+                        currentLocation.value?.let { location ->
+                            if (location == LocationViewModel.GPS_NETWORK_DISABLED_MESSAGE) {
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = location,
+                                        color = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.padding(4.dp)
+                                    )
                                 }
                             }
                         }
 
-                        // Bottom Section
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            // Buttons
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        if (isRecording) {
+                            OnTrackingDataComposable(
+                                currentLocation = currentLocation,
+                                lightSensor = lightSensor,
+                                linearAccelerationSensor = linearAccelerationSensor,
+                                gravitySensor = gravitySensor
+                            )
+                        }
+
+                        if (!isRecording && routes.isNotEmpty()) {
+                            // Bottom Section
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                Button(onClick = {
-                                    mapViewModel.deleteAllLocations()
-                                }) {
-                                    Text("Delete routes")
+                                // Buttons
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Button(onClick = {
+                                        mapViewModel.deleteAllLocations()
+                                    }) {
+                                        Text("Delete routes")
+                                    }
                                 }
                             }
                         }

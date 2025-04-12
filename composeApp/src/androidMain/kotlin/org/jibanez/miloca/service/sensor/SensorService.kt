@@ -80,7 +80,6 @@ class SensorService : Service(), SensorEventListener {
                     }
                 )
 
-                //TODO include more sensors TYPE_GRAVITY
                 //Light sensor
                 val lightSensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT)
                 lightSensor?.let { sensor ->
@@ -95,6 +94,15 @@ class SensorService : Service(), SensorEventListener {
                 val linearAccelerationSensor: Sensor? =
                     sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)   //Will be resources optimized with TYPE_ACCELEROMETER
                 linearAccelerationSensor?.let { sensor ->
+                    sensorManager.registerListener(
+                        this@SensorService,
+                        sensor,
+                        SensorManager.SENSOR_DELAY_NORMAL
+                    )
+                }
+
+                val gravitySensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY)
+                gravitySensor?.let { sensor ->
                     sensorManager.registerListener(
                         this@SensorService,
                         sensor,
@@ -145,6 +153,7 @@ class SensorService : Service(), SensorEventListener {
         val intentAction = when (sensorType) {
             Sensor.TYPE_LIGHT -> "TYPE_LIGHT"
             Sensor.TYPE_LINEAR_ACCELERATION -> "TYPE_LINEAR_ACCELERATION"
+            Sensor.TYPE_GRAVITY -> "TYPE_GRAVITY"
             else -> null
         }
 
