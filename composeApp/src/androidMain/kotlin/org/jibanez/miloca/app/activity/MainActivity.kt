@@ -36,11 +36,12 @@ import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import org.jibanez.miloca.App
-import org.jibanez.miloca.composable.BlinkingMessage
+import org.jibanez.miloca.composable.DisplayDetailDataComposable
+import org.jibanez.miloca.composable.HelpMessagesComposable
 import org.jibanez.miloca.composable.MyMap
-import org.jibanez.miloca.composable.OnTrackingDataComposable
 import org.jibanez.miloca.composable.RecordingControls
 import org.jibanez.miloca.composable.RoutesDropdownMenu
+import org.jibanez.miloca.composable.formatNumber
 import org.jibanez.miloca.service.location.LocationService
 import org.jibanez.miloca.service.sensor.SensorService
 import org.jibanez.miloca.viewmodel.LocationViewModel
@@ -77,6 +78,7 @@ class MainActivity : ComponentActivity() {
             var routeSelected by remember { mutableStateOf("") }
             val context = LocalContext.current
 
+            var distanceToRoute by remember { mutableStateOf("") }
 
             if (showDialog) {
                 AlertDialog(
@@ -199,7 +201,7 @@ class MainActivity : ComponentActivity() {
                                 isLocationEnabled = currentLocation.value != LocationViewModel.GPS_NETWORK_DISABLED_MESSAGE,
                                 routeSelected = routeSelected,
                                 onStartClick = { showDialog = true },
-                                onFollowCLick = { showDialog = true },
+                                onFollowCLick = { showDialog = true }, //TODO onFollowClick feature (send alert when distance is too far)
                                 onStopClick = {
                                     Intent(
                                         applicationContext,
@@ -230,38 +232,24 @@ class MainActivity : ComponentActivity() {
                             currentLocation,
                             if (isRecording) newRouteName else routeSelected,
                             isRecording
+                        ) { distance ->
+                            distanceToRoute = formatNumber(distance)
+                        }
+
+                        HelpMessagesComposable(
+                            isRecording = isRecording,
+                            routes = routes,
+                            currentLocation = currentLocation
                         )
 
-                        if (!isRecording) {
-                            BlinkingMessage(
-                                message = "Press + to create a new route ...",
-                                isVisible = routes.isEmpty()
-                            )
-                        }
-
-                        currentLocation.value?.let { location ->
-                            if (location == LocationViewModel.GPS_NETWORK_DISABLED_MESSAGE) {
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Text(
-                                        text = location,
-                                        color = MaterialTheme.colorScheme.error,
-                                        modifier = Modifier.padding(4.dp)
-                                    )
-                                }
-                            }
-                        }
-
-                        if (isRecording) {
-                            OnTrackingDataComposable(
-                                currentLocation = currentLocation,
-                                lightSensor = lightSensor,
-                                linearAccelerationSensor = linearAccelerationSensor,
-                                gravitySensor = gravitySensor
-                            )
-                        }
+                        DisplayDetailDataComposable(
+                            currentLocation = currentLocation,
+                            lightSensor = lightSensor,
+                            linearAccelerationSensor = linearAccelerationSensor,
+                            gravitySensor = gravitySensor,
+                            isRecording = isRecording,
+                            distanceToRoute = distanceToRoute
+                        )
 
                         if (!isRecording && routes.isNotEmpty()) {
                             // Bottom Section
@@ -276,6 +264,7 @@ class MainActivity : ComponentActivity() {
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     Button(onClick = {
+                                        distanceToRoute = ""
                                         mapViewModel.deleteAllLocations()
                                     }) {
                                         Text("Delete routes")

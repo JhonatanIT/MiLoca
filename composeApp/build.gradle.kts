@@ -107,6 +107,7 @@ android {
         implementation(libs.maps.compose)
         implementation(libs.play.services.maps)
         implementation(libs.play.services.location)
+        implementation(libs.android.maps.utils)
 
         //Room - Local database
         implementation(libs.androidx.room.runtime)
