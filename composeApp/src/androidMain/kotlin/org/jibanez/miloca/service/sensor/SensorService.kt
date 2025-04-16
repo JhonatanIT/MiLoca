@@ -29,8 +29,8 @@ class SensorService : Service(), SensorEventListener {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var sensorManager: SensorManager
 
-    private val notification = NotificationCompat.Builder(this, LocationApp.LOCATION_CHANNEL_ID)
-        .setContentTitle("MiLoca")
+    private val notification = NotificationCompat.Builder(this, LocationApp.SENSOR_CHANNEL_ID)
+        .setContentTitle("Sensors")
         .setContentText("Sensors: ...loading")
         .setSmallIcon(R.drawable.ic_launcher_background)
         .setOngoing(true)

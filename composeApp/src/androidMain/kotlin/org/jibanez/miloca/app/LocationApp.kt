@@ -17,44 +17,54 @@ import org.koin.core.context.startKoin
  * This class is responsible for setting up the environment that the entire app operates in,
  * primarily setting up the notification channel that the app will use.
  */
-class LocationApp: Application() {
+class LocationApp : Application() {
 
     companion object {
         const val LOCATION_CHANNEL_ID = "location_channel"
         const val LOCATION_CHANNEL_NAME = "Location"
+        const val SENSOR_CHANNEL_ID = "sensor_channel"
+        const val SENSOR_CHANNEL_NAME = "Sensor"
+        const val MEDIA_PROJECTION_CHANNEL_ID = "screen_recording_channel"
+        const val MEDIA_PROJECTION_CHANNEL_NAME = "Screen Recording"
     }
 
     override fun onCreate() {
         super.onCreate()
 
-       startKoin {
+        startKoin {
             androidLogger()
             androidContext(this@LocationApp)
             modules(appModule)
         }
-        createNotificationChannel()
+        createNotificationChannel(LOCATION_CHANNEL_ID, LOCATION_CHANNEL_NAME)
+        createNotificationChannel(SENSOR_CHANNEL_ID, SENSOR_CHANNEL_NAME)
+        createNotificationChannel(MEDIA_PROJECTION_CHANNEL_ID, MEDIA_PROJECTION_CHANNEL_NAME)
     }
 
-    private fun createNotificationChannel() {
+    private fun createNotificationChannel(
+        channelId: String,
+        channelName: String
+    ) {
         val channel = NotificationChannel(
-            LOCATION_CHANNEL_ID,
-            LOCATION_CHANNEL_NAME,
-            NotificationManager.IMPORTANCE_LOW
+            channelId,
+            channelName,
+            NotificationManager.IMPORTANCE_DEFAULT
         ).apply {
-            description = "Channel for location-related notifications" // Add a description
+            description = "Channel for $channelName notifications" // Add a description
             // You can set other properties here, e.g.,
             // setShowBadge(false)
             // setSound(null, null)
         }
 
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val notificationManager =
+            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         // Check if the channel already exists to avoid redundant creation
-        if (notificationManager.getNotificationChannel(LOCATION_CHANNEL_ID) == null) {
+        if (notificationManager.getNotificationChannel(channelId) == null) {
             notificationManager.createNotificationChannel(channel)
-            Log.d("LocationApp", "Notification channel created: $LOCATION_CHANNEL_ID")
+            Log.d("LocationApp", "Notification channel created: $channelId")
         } else {
-            Log.d("LocationApp", "Notification channel already exists: $LOCATION_CHANNEL_ID")
+            Log.d("LocationApp", "Notification channel already exists: $channelId")
         }
     }
 }

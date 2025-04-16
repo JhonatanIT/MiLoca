@@ -60,7 +60,7 @@ class LocationService: Service() {
      */
     private fun start() {
         val notification = NotificationCompat.Builder(this, LocationApp.LOCATION_CHANNEL_ID)
-            .setContentTitle("MiLoca")
+            .setContentTitle("Location tracking")
             .setContentText("Location: ...loading")
             .setSmallIcon(R.drawable.ic_launcher_background)
             .setOngoing(true)

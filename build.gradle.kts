@@ -8,4 +8,5 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform) apply false
     alias(libs.plugins.google.android.libraries.mapsplatform.secrets.gradle.plugin) apply false
     id("com.google.devtools.ksp") version "2.1.20-2.0.0" apply false
+    alias(libs.plugins.kotlin.parcelize) apply false
 }

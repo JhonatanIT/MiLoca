@@ -5,10 +5,16 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
+import android.media.projection.MediaProjectionManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -35,6 +41,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.getSystemService
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.jibanez.miloca.App
 import org.jibanez.miloca.composable.DisplayDetailDataComposable
 import org.jibanez.miloca.composable.HelpMessagesComposable
@@ -43,12 +51,18 @@ import org.jibanez.miloca.composable.RecordingControls
 import org.jibanez.miloca.composable.RoutesDropdownMenu
 import org.jibanez.miloca.composable.formatNumber
 import org.jibanez.miloca.service.location.LocationService
+import org.jibanez.miloca.service.mediaProjection.ScreenRecordConfig
+import org.jibanez.miloca.service.mediaProjection.ScreenRecordService
 import org.jibanez.miloca.service.sensor.SensorService
 import org.jibanez.miloca.viewmodel.LocationViewModel
 import org.jibanez.miloca.viewmodel.MapViewModel
 import org.koin.androidx.compose.koinViewModel
 
 class MainActivity : ComponentActivity() {
+
+    private val mediaProjectionManager by lazy {
+        getSystemService<MediaProjectionManager>()!!
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -60,6 +74,14 @@ class MainActivity : ComponentActivity() {
             ),
             0
         )
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                0
+            )
+        }
         setContent {
 
             val locationViewModel: LocationViewModel = koinViewModel()
@@ -127,6 +149,49 @@ class MainActivity : ComponentActivity() {
             var linearAccelerationSensor by remember { mutableStateOf<String?>(null) }
             var gravitySensor by remember { mutableStateOf<String?>(null) }
 
+            //Screen recording
+            val isServiceRunning by ScreenRecordService
+                .isServiceRunning
+                .collectAsStateWithLifecycle()
+            var hasNotificationPermission by remember {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    mutableStateOf(
+                        ContextCompat.checkSelfPermission(
+                            applicationContext,
+                            Manifest.permission.POST_NOTIFICATIONS
+                        ) == PackageManager.PERMISSION_GRANTED
+                    )
+                } else mutableStateOf(true)
+            }
+            val screenRecordLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.StartActivityForResult()
+            ) { result ->
+                val intent = result.data ?: return@rememberLauncherForActivityResult
+                val config = ScreenRecordConfig(
+                    resultCode = result.resultCode,
+                    data = intent
+                )
+
+                val serviceIntent = Intent(
+                    applicationContext,
+                    ScreenRecordService::class.java
+                ).apply {
+                    action = ScreenRecordService.START_RECORDING
+                    putExtra(ScreenRecordService.KEY_RECORDING_CONFIG, config)
+                }
+                startForegroundService(serviceIntent)
+            }
+            val permissionLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.RequestPermission()
+            ) { isGranted ->
+                hasNotificationPermission = isGranted
+                if (hasNotificationPermission && !isServiceRunning) {
+                    screenRecordLauncher.launch(
+                        mediaProjectionManager.createScreenCaptureIntent()
+                    )
+                }
+            }
+
             DisposableEffect(Unit) {
                 val lightReceiver = createReceiver("TYPE_LIGHT") { values ->
                     lightSensor = "Light: %.2f lux".format(values?.last())
@@ -184,7 +249,6 @@ class MainActivity : ComponentActivity() {
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -201,7 +265,9 @@ class MainActivity : ComponentActivity() {
                                 isLocationEnabled = currentLocation.value != LocationViewModel.GPS_NETWORK_DISABLED_MESSAGE,
                                 routeSelected = routeSelected,
                                 onStartClick = { showDialog = true },
-                                onFollowCLick = { showDialog = true }, //TODO onFollowClick feature (send alert when distance is too far)
+                                onFollowCLick = {
+                                    showDialog = true
+                                }, //TODO onFollowClick feature (send alert when distance is too far)
                                 onStopClick = {
                                     Intent(
                                         applicationContext,
@@ -251,24 +317,51 @@ class MainActivity : ComponentActivity() {
                             distanceToRoute = distanceToRoute
                         )
 
-                        if (!isRecording && routes.isNotEmpty()) {
-                            // Bottom Section
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(paddingValues),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                // Buttons
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
+                                if (!isRecording && routes.isNotEmpty()) {
                                     Button(onClick = {
                                         distanceToRoute = ""
                                         mapViewModel.deleteAllLocations()
                                     }) {
                                         Text("Delete routes")
                                     }
+                                }
+                                Button(
+                                    onClick = {
+                                        if (!hasNotificationPermission &&
+                                            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                                        ) {
+                                            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                        } else {
+                                            if (isServiceRunning) {
+                                                Intent(
+                                                    applicationContext,
+                                                    ScreenRecordService::class.java
+                                                ).also {
+                                                    it.action = ScreenRecordService.STOP_RECORDING
+                                                    startForegroundService(it)
+                                                }
+                                            } else {
+                                                screenRecordLauncher.launch(
+                                                    mediaProjectionManager.createScreenCaptureIntent()
+                                                )
+                                            }
+                                        }
+                                    },
+                                ) {
+                                    Text(
+                                        text = if (isServiceRunning) {
+                                            "Stop recording"
+                                        } else "Start recording"
+                                    )
                                 }
                             }
                         }

@@ -11,6 +11,7 @@ plugins {
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.google.android.libraries.mapsplatform.secrets.gradle.plugin)
     id("com.google.devtools.ksp")
+    alias(libs.plugins.kotlin.parcelize)
 }
 
 kotlin {
@@ -122,6 +123,9 @@ android {
         implementation(libs.androidx.ui)
         implementation(libs.androidx.material3)
         implementation(libs.androidx.ui.tooling.preview)
+
+        //Record Screen
+        implementation(libs.androidx.window)
     }
 
     buildFeatures {
