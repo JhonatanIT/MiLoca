@@ -1,5 +1,6 @@
 package org.jibanez.miloca.service.mediaProjection
 
+import android.Manifest
 import android.app.Service
 import android.content.ContentValues
 import android.content.Intent
@@ -31,8 +32,7 @@ import java.io.FileInputStream
 
 @Parcelize
 data class ScreenRecordConfig(
-    val resultCode: Int,
-    val data: Intent
+    val resultCode: Int, val data: Intent
 ) : Parcelable
 
 class ScreenRecordService : Service() {
@@ -50,14 +50,15 @@ class ScreenRecordService : Service() {
 
     private val notification =
         NotificationCompat.Builder(this, LocationApp.MEDIA_PROJECTION_CHANNEL_ID)
-            .setContentTitle("Screen recording")
-            .setContentText("Recording in progress...")
-            .setSmallIcon(R.drawable.ic_launcher_background)
-            .setOngoing(true)
+            .setContentTitle("Screen recording").setContentText("Recording in progress...")
+            .setSmallIcon(R.drawable.ic_launcher_background).setOngoing(true)
 
     private val outputFile by lazy {
         File(cacheDir, "tmp.mp4")
     }
+
+    private val hasAudioPermission: Boolean
+        get() = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED
 
     private val mediaProjectionManager by lazy {
         getSystemService<MediaProjectionManager>()
@@ -105,8 +106,7 @@ class ScreenRecordService : Service() {
                     )
                 } else {
                     startForeground(
-                        1,
-                        notification.build()
+                        1, notification.build()
                     )
                 }
                 _isServiceRunning.value = true
@@ -123,8 +123,7 @@ class ScreenRecordService : Service() {
     private fun startRecording(intent: Intent) {
         val config = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             intent.getParcelableExtra(
-                KEY_RECORDING_CONFIG,
-                ScreenRecordConfig::class.java
+                KEY_RECORDING_CONFIG, ScreenRecordConfig::class.java
             )
         } else {
             intent.getParcelableExtra(KEY_RECORDING_CONFIG)
@@ -134,8 +133,7 @@ class ScreenRecordService : Service() {
         }
 
         mediaProjection = mediaProjectionManager?.getMediaProjection(
-            config.resultCode,
-            config.data
+            config.resultCode, config.data
         )
         mediaProjection?.registerCallback(mediaProjectionCallback, null)
 
@@ -164,9 +162,7 @@ class ScreenRecordService : Service() {
     }
 
     private fun getScaledDimensions(
-        maxWidth: Int,
-        maxHeight: Int,
-        scaleFactor: Float = 0.8f
+        maxWidth: Int, maxHeight: Int, scaleFactor: Float = 0.8f
     ): Pair<Int, Int> {
         val aspectRatio = maxWidth / maxHeight.toFloat()
 
@@ -184,12 +180,19 @@ class ScreenRecordService : Service() {
     private fun initializeRecorder() {
         val (width, height) = getWindowSize()
         val (scaledWidth, scaledHeight) = getScaledDimensions(
-            maxWidth = width,
-            maxHeight = height
+            maxWidth = width, maxHeight = height
         )
         with(mediaRecorder) {
+            if (hasAudioPermission) {
+                setAudioSource(MediaRecorder.AudioSource.MIC)
+            }
             setVideoSource(MediaRecorder.VideoSource.SURFACE)
-            setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP)
+            setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+            if (hasAudioPermission) {
+                setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+                setAudioEncodingBitRate(AUDIO_BIT_RATE)
+                setAudioSamplingRate(AUDIO_SAMPLE_RATE)
+            }
             setOutputFile(outputFile)
             setVideoSize(scaledWidth, scaledHeight)
             setVideoEncoder(MediaRecorder.VideoEncoder.H264)
@@ -236,6 +239,8 @@ class ScreenRecordService : Service() {
 
         private const val VIDEO_FRAME_RATE = 30
         private const val VIDEO_BIT_RATE_KILOBITS = 256
+        private const val AUDIO_BIT_RATE = 128_000
+        private const val AUDIO_SAMPLE_RATE = 44100
 
         const val START_RECORDING = "START_RECORDING"
         const val STOP_RECORDING = "STOP_RECORDING"
