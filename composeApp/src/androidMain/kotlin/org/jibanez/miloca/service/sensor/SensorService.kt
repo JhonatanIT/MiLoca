@@ -22,6 +22,8 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import org.jibanez.miloca.R
 import org.jibanez.miloca.app.LocationApp
+import org.jibanez.miloca.entity.RealtimeData
+import org.jibanez.miloca.repository.FirebaseRepository
 
 
 class SensorService : Service(), SensorEventListener {
@@ -29,11 +31,15 @@ class SensorService : Service(), SensorEventListener {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var sensorManager: SensorManager
 
-    private val notification = NotificationCompat.Builder(this, LocationApp.SENSOR_CHANNEL_ID)
-        .setContentTitle("Sensors")
-        .setContentText("Sensors: ...loading")
-        .setSmallIcon(R.drawable.ic_launcher_background)
-        .setOngoing(true)
+    //TODO use koin to inject the repository and the curreentRealtimeData
+    private val firebaseRepository = FirebaseRepository()
+    //TODO read the currentRealtimeData from the database when the service starts
+    private var currentRealtimeData = RealtimeData()
+
+    private val notification =
+        NotificationCompat.Builder(this, LocationApp.SENSOR_CHANNEL_ID).setContentTitle("Sensors")
+            .setContentText("Sensors: ...loading").setSmallIcon(R.drawable.ic_launcher_background)
+            .setOngoing(true)
     private val notificationManager: NotificationManager by lazy {
         getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     }
@@ -68,7 +74,9 @@ class SensorService : Service(), SensorEventListener {
         serviceScope.launch {
             try {
                 ServiceCompat.startForeground(
-                    this@SensorService, 1, notification.build(),
+                    this@SensorService,
+                    1,
+                    notification.build(),
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                             ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
@@ -84,9 +92,7 @@ class SensorService : Service(), SensorEventListener {
                 val lightSensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT)
                 lightSensor?.let { sensor ->
                     sensorManager.registerListener(
-                        this@SensorService,
-                        sensor,
-                        SensorManager.SENSOR_DELAY_NORMAL
+                        this@SensorService, sensor, SensorManager.SENSOR_DELAY_NORMAL
                     )
                 }
 
@@ -95,18 +101,14 @@ class SensorService : Service(), SensorEventListener {
                     sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)   //Will be resources optimized with TYPE_ACCELEROMETER
                 linearAccelerationSensor?.let { sensor ->
                     sensorManager.registerListener(
-                        this@SensorService,
-                        sensor,
-                        SensorManager.SENSOR_DELAY_NORMAL
+                        this@SensorService, sensor, SensorManager.SENSOR_DELAY_NORMAL
                     )
                 }
 
                 val gravitySensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY)
                 gravitySensor?.let { sensor ->
                     sensorManager.registerListener(
-                        this@SensorService,
-                        sensor,
-                        SensorManager.SENSOR_DELAY_NORMAL
+                        this@SensorService, sensor, SensorManager.SENSOR_DELAY_NORMAL
                     )
                 }
 
@@ -114,9 +116,7 @@ class SensorService : Service(), SensorEventListener {
                 awaitCancellation()
 
             } catch (e: Exception) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-                    && e is ForegroundServiceStartNotAllowedException
-                ) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && e is ForegroundServiceStartNotAllowedException) {
                     println("App not in a valid state to start foreground service") // (e.g. started from bg)
                 }
                 println("Error starting foreground service: ${e.message}")
@@ -157,6 +157,45 @@ class SensorService : Service(), SensorEventListener {
             else -> null
         }
 
+        when (sensorType) {
+
+            //TODO evaluate if isSafe is false
+            Sensor.TYPE_LIGHT -> {
+                val lightValue = event.values[0]
+                val lightType = SensorDataProcessor.processLight(lightValue)
+
+                if (currentRealtimeData.light != lightType){
+                    currentRealtimeData = currentRealtimeData.copy(light = lightType)
+                    firebaseRepository.uploadLightData(lightType)
+                }
+            }
+            Sensor.TYPE_LINEAR_ACCELERATION -> {
+                val magnitude = kotlin.math.sqrt(
+                    event.values[0] * event.values[0] +
+                            event.values[1] * event.values[1] +
+                            event.values[2] * event.values[2]
+                )
+                val accelerationType = SensorDataProcessor.processAcceleration(magnitude)
+                if (currentRealtimeData.acceleration != accelerationType) {
+                    currentRealtimeData = currentRealtimeData.copy(acceleration = accelerationType)
+                    firebaseRepository.uploadAccelerationData(accelerationType)
+                }
+            }
+            Sensor.TYPE_GRAVITY -> {
+                val flatType = SensorDataProcessor.processFlat(event.values[2])
+                val orientationType = SensorDataProcessor.processOrientation(event.values[0], event.values[1])
+
+                if (currentRealtimeData.flat != flatType){
+                    currentRealtimeData = currentRealtimeData.copy(flat = flatType)
+                    firebaseRepository.uploadFlatData(flatType)
+                }
+                if (currentRealtimeData.orientation != orientationType) {
+                    currentRealtimeData = currentRealtimeData.copy(orientation = orientationType)
+                    firebaseRepository.uploadOrientationData(orientationType)
+                }
+            }
+        }
+
         intentAction?.let {
             val sensorIntent = Intent(it).apply {
                 putExtra("values", event.values)
@@ -166,12 +205,9 @@ class SensorService : Service(), SensorEventListener {
 
         // Foreground service notification update
         if (sensorType == Sensor.TYPE_LIGHT) {
-
-            val sensorValues = event.values.joinToString("-")
             val updatedText = when (sensorType) {
                 Sensor.TYPE_LIGHT -> "Light: ${event.values.last()} lux"
-//                Sensor.TYPE_LINEAR_ACCELERATION -> "Linear acceleration: $sensorValues m/s^2"
-                else -> "Sensor: ${event.sensor.name} - $sensorValues"
+                else -> "Sensor: ${event.sensor.name} - $event.values"
             }
 
             val updatedNotification = notification.setContentText(updatedText)

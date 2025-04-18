@@ -58,6 +58,7 @@ import org.jibanez.miloca.viewmodel.LocationViewModel
 import org.jibanez.miloca.viewmodel.MapViewModel
 import org.koin.androidx.compose.koinViewModel
 
+//TODO use the isSafe value to trigger save data in Firebase, regardless of the route selected and onTracking state
 class MainActivity : ComponentActivity() {
 
     private val mediaProjectionManager by lazy {
@@ -206,7 +207,10 @@ class MainActivity : ComponentActivity() {
                             "Acceleration: %.2f m/s²".format(magnitude)
                     }
                 val gravityReceiver = createReceiver("TYPE_GRAVITY") { values ->
-                    gravitySensor = "Gravity: %.2f m/s²".format(values?.last())
+                    values?.let {
+                        gravitySensor =
+                            "Gravity: X=%.2f, Y=%.2f, Z=%.2f m/s²".format(it[0], it[1], it[2])
+                    }
                 }
 
                 //TODO use RECEIVER_NOT_EXPORTED for better security

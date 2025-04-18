@@ -12,6 +12,8 @@ plugins {
     alias(libs.plugins.google.android.libraries.mapsplatform.secrets.gradle.plugin)
     id("com.google.devtools.ksp")
     alias(libs.plugins.kotlin.parcelize)
+    // Add the Google services Gradle plugin
+    id("com.google.gms.google-services")
 }
 
 kotlin {
@@ -21,9 +23,9 @@ kotlin {
             jvmTarget.set(JvmTarget.JVM_11)
         }
     }
-    
+
     jvm("desktop")
-    
+
     @OptIn(ExperimentalWasmDsl::class)
     wasmJs {
         moduleName = "composeApp"
@@ -43,19 +45,13 @@ kotlin {
         }
         binaries.executable()
     }
-    
+
     sourceSets {
         val desktopMain by getting
-        
+
         androidMain.dependencies {
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
-
-            // Location Services
-            implementation(libs.play.services.location)
-
-            // Lifecycle ViewModel components
-            implementation(libs.androidx.runtime.livedata)
         }
         commonMain.dependencies {
             implementation(compose.runtime)
@@ -110,6 +106,12 @@ android {
         implementation(libs.play.services.location)
         implementation(libs.android.maps.utils)
 
+        // Location Services
+        implementation(libs.play.services.location)
+
+        // Lifecycle ViewModel components
+        implementation(libs.androidx.runtime.livedata)
+
         //Room - Local database
         implementation(libs.androidx.room.runtime)
         implementation(libs.androidx.room.ktx)
@@ -126,6 +128,13 @@ android {
 
         //Record Screen
         implementation(libs.androidx.window)
+
+        // Import the BoM for the Firebase platform
+        implementation(platform(libs.firebase.bom))
+
+        // Add the dependency for the Realtime Database library
+        // When using the BoM, you don't specify versions in Firebase library dependencies
+        implementation(libs.firebase.database)
     }
 
     buildFeatures {
