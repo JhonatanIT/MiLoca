@@ -19,7 +19,7 @@ import org.jibanez.miloca.service.location.LocationClient
  * lifecycle.
  *
  */
-
+//TODO implement FirebaseRepository to read data from Firebase (just read)
 class LocationViewModel(application: Application, private val locationClient: LocationClient) : AndroidViewModel(application) {
 
     private val _locationData = MutableLiveData<String>()

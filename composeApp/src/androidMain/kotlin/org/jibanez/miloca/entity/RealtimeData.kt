@@ -6,14 +6,12 @@ data class RealtimeData(
     var orientation: OrientationType = OrientationType.PORTRAIT,
     var isSafe: Boolean = true,
     var light: LightType = LightType.NORMAL,
-    var location: Location? = Location(),
+    var location: LocationData? = LocationData(),
     var timestamp: Long = System.currentTimeMillis()
 )
 
-data class Location(
-    val latitude: Double = 0.0,
-    val longitude: Double = 0.0,
-    val altitude: Double = 0.0
+data class LocationData(
+    val latitude: Double = 0.0, val longitude: Double = 0.0, val altitude: Double = 0.0
 )
 
 enum class AccelerationType {
@@ -29,5 +27,5 @@ enum class OrientationType {
 }
 
 enum class LightType {
-    DARK, DIM, NORMAL, BRIGHT
+    VERY_DARK, DARK, DIM, NORMAL, BRIGHT, VERY_BRIGHT
 }

@@ -2,6 +2,7 @@ import androidx.room.Room
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import org.jibanez.miloca.dao.LocationDao
+import org.jibanez.miloca.repository.FirebaseRepository
 import org.jibanez.miloca.repository.LocationDatabase
 import org.jibanez.miloca.repository.LocationRepository
 import org.jibanez.miloca.service.location.DefaultLocationClient
@@ -17,9 +18,7 @@ val appModule = module {
     // Database
     single {
         Room.databaseBuilder(
-            androidApplication(),
-            LocationDatabase::class.java,
-            "location_database"
+            androidApplication(), LocationDatabase::class.java, "location_database"
         ).build()
     }
 
@@ -31,6 +30,9 @@ val appModule = module {
 
     // Repository
     single { LocationRepository(get()) }
+
+    single { FirebaseRepository() }
+    single { get<FirebaseRepository>().getRealtimeData() }
 
     // ViewModel
     viewModelOf(::MapViewModel)

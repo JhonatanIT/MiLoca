@@ -36,7 +36,7 @@ fun RecordingControls(
                 IconWithText(Icons.Default.Add, "New")
             }
 
-            //TODO add follow feature
+            //TODO add follow feature (use isSafe value to trigger save data in Firebase)
             Button(
                 onClick = onFollowCLick,
                 enabled = isLocationEnabled && routeSelected.isNotEmpty()

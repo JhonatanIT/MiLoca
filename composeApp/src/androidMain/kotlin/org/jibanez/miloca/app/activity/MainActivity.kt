@@ -91,7 +91,7 @@ class MainActivity : ComponentActivity() {
 
             //observeAsState() converts the imperative LiveData into a declarative State that Compose can understand.
             val currentLocation = locationViewModel.locationData.observeAsState()
-            locationViewModel.startLocationUpdates(2000L)
+            locationViewModel.startLocationUpdates(5000L)
 
             val routes by mapViewModel.routes.collectAsState(initial = emptyList())
 
