@@ -25,6 +25,7 @@ import kotlinx.coroutines.launch
 import org.jibanez.miloca.R
 import org.jibanez.miloca.app.LocationApp
 import org.jibanez.miloca.entity.RealtimeData
+import org.jibanez.miloca.entity.SensorType
 import org.jibanez.miloca.repository.FirebaseRepository
 import org.koin.android.ext.android.inject
 
@@ -90,30 +91,12 @@ class SensorService : Service(), SensorEventListener {
                     }
                 )
 
-                //Light sensor
-                val lightSensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT)
-                lightSensor?.let { sensor ->
-                    sensorManager.registerListener(
-                        this@SensorService, sensor, SensorManager.SENSOR_DELAY_NORMAL
-                    )
-                }
+                //Register sensors
+                registerSensor(Sensor.TYPE_LIGHT)
+                registerSensor(Sensor.TYPE_LINEAR_ACCELERATION)
+                registerSensor(Sensor.TYPE_GRAVITY)
 
-                //Linear acceleration sensor
-                val linearAccelerationSensor: Sensor? =
-                    sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)   //Will be resources optimized with TYPE_ACCELEROMETER
-                linearAccelerationSensor?.let { sensor ->
-                    sensorManager.registerListener(
-                        this@SensorService, sensor, SensorManager.SENSOR_DELAY_NORMAL
-                    )
-                }
-
-                val gravitySensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY)
-                gravitySensor?.let { sensor ->
-                    sensorManager.registerListener(
-                        this@SensorService, sensor, SensorManager.SENSOR_DELAY_NORMAL
-                    )
-                }
-
+                // Observe realtime data from Firebase
                 realtimeData.collect { data ->
                     currentRealtimeData = data
                     Log.d(TAG, "RealtimeData: $data")
@@ -138,6 +121,14 @@ class SensorService : Service(), SensorEventListener {
         }
     }
 
+    private fun registerSensor(sensorType: Int) {
+        sensorManager.getDefaultSensor(sensorType)?.let { sensor ->
+            sensorManager.registerListener(
+                this@SensorService, sensor, SensorManager.SENSOR_DELAY_NORMAL
+            )
+        }
+    }
+
     private fun stop() {
         sensorManager.unregisterListener(this@SensorService)
         stopForeground(STOP_FOREGROUND_REMOVE)
@@ -157,74 +148,77 @@ class SensorService : Service(), SensorEventListener {
     }
 
     override fun onSensorChanged(event: SensorEvent) {
-
         val sensorType = event.sensor.type
 
-        val intentAction = when (sensorType) {
-            Sensor.TYPE_LIGHT -> "TYPE_LIGHT"
-            Sensor.TYPE_LINEAR_ACCELERATION -> "TYPE_LINEAR_ACCELERATION"
-            Sensor.TYPE_GRAVITY -> "TYPE_GRAVITY"
-            else -> null
-        }
-
+        //TODO evaluate if isSafe is false
         when (sensorType) {
-
-            //TODO evaluate if isSafe is false
-            Sensor.TYPE_LIGHT -> {
-                val lightValue = event.values[0]
-                val lightType = SensorDataProcessor.processLight(lightValue)
-
-                if (currentRealtimeData.light != lightType) {
-                    currentRealtimeData = currentRealtimeData.copy(light = lightType)
-                    firebaseRepository.uploadLightData(lightType)
-                }
-            }
-
-            Sensor.TYPE_LINEAR_ACCELERATION -> {
-                val magnitude = kotlin.math.sqrt(
-                    event.values[0] * event.values[0] + event.values[1] * event.values[1] + event.values[2] * event.values[2]
-                )
-                val accelerationType = SensorDataProcessor.processAcceleration(magnitude)
-                if (currentRealtimeData.acceleration != accelerationType) {
-                    currentRealtimeData = currentRealtimeData.copy(acceleration = accelerationType)
-                    firebaseRepository.uploadAccelerationData(accelerationType)
-                }
-            }
-
-            Sensor.TYPE_GRAVITY -> {
-                val flatType = SensorDataProcessor.processFlat(event.values[2])
-                val orientationType =
-                    SensorDataProcessor.processOrientation(event.values[0], event.values[1])
-
-                if (currentRealtimeData.flat != flatType) {
-                    currentRealtimeData = currentRealtimeData.copy(flat = flatType)
-                    firebaseRepository.uploadFlatData(flatType)
-                }
-                if (currentRealtimeData.orientation != orientationType) {
-                    currentRealtimeData = currentRealtimeData.copy(orientation = orientationType)
-                    firebaseRepository.uploadOrientationData(orientationType)
-                }
-            }
+            Sensor.TYPE_LIGHT -> handleLightSensor(event.values[0])
+            Sensor.TYPE_LINEAR_ACCELERATION -> handleAccelerationSensor(event.values)
+            Sensor.TYPE_GRAVITY -> handleGravitySensor(event.values)
         }
+    }
 
-        intentAction?.let {
-            val sensorIntent = Intent(it).apply {
-                putExtra("values", event.values)
-            }
-            sendBroadcast(sensorIntent)
+    private fun handleLightSensor(lightValue: Float) {
+        val lightType = SensorDataProcessor.processLight(lightValue)
+        if (currentRealtimeData.light != lightType) {
+            updateSensorData(
+                SensorType.LIGHT,
+                lightType.value,
+                { currentRealtimeData.copy(light = lightType) },
+                { firebaseRepository.uploadLightData(lightType) })
         }
+    }
 
-        // Foreground service notification update
-        if (sensorType == Sensor.TYPE_LIGHT) {
-            val updatedText = when (sensorType) {
-                Sensor.TYPE_LIGHT -> "Light: ${event.values.last()} lux"
-                else -> "Sensor: ${event.sensor.name} - $event.values"
-            }
-
-            val updatedNotification = notification.setContentText(updatedText)
-
-            notificationManager.notify(1, updatedNotification.build())
+    private fun handleAccelerationSensor(values: FloatArray) {
+        val magnitude = kotlin.math.sqrt(
+            values[0] * values[0] + values[1] * values[1] + values[2] * values[2]
+        )
+        val accelerationType = SensorDataProcessor.processAcceleration(magnitude)
+        if (currentRealtimeData.acceleration != accelerationType) {
+            updateSensorData(
+                SensorType.ACCELERATION,
+                accelerationType.value,
+                { currentRealtimeData.copy(acceleration = accelerationType) },
+                { firebaseRepository.uploadAccelerationData(accelerationType) })
         }
+    }
+
+    private fun handleGravitySensor(values: FloatArray) {
+        val flatType = SensorDataProcessor.processFlat(values[2])
+        val orientationType = SensorDataProcessor.processOrientation(values[0], values[1])
+
+        if (currentRealtimeData.flat != flatType) {
+            updateSensorData(
+                SensorType.FLAT,
+                flatType.value,
+                { currentRealtimeData.copy(flat = flatType) },
+                { firebaseRepository.uploadFlatData(flatType) })
+        }
+        if (currentRealtimeData.orientation != orientationType) {
+            updateSensorData(
+                SensorType.ORIENTATION,
+                orientationType.value,
+                { currentRealtimeData.copy(orientation = orientationType) },
+                { firebaseRepository.uploadOrientationData(orientationType) })
+        }
+    }
+
+    private fun updateSensorData(
+        sensorType: SensorType,
+        value: String,
+        updateData: () -> RealtimeData,
+        uploadData: () -> Unit
+    ) {
+        currentRealtimeData = updateData()
+        uploadData()
+
+        val sensorIntent = Intent(sensorType.value).apply {
+            val text = "${sensorType.value}: $value"
+            notification.setContentText(text)
+            notificationManager.notify(1, notification.build())
+            putExtra("value", text)
+        }
+        sendBroadcast(sensorIntent)
     }
 
     override fun onAccuracyChanged(sensor: Sensor, p1: Int) {

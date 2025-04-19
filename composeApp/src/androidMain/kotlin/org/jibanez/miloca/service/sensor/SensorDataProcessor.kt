@@ -26,7 +26,7 @@ object SensorDataProcessor {
     }
 
     fun processLight(lux: Float): LightType = when {
-        lux <= 3f -> LightType.VERY_DARK
+        lux <= 5f -> LightType.VERY_DARK
         lux <= 50f -> LightType.DARK
         lux <= 200f -> LightType.DIM
         lux <= 500f -> LightType.NORMAL
