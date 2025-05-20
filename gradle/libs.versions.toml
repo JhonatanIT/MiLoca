@@ -27,7 +27,7 @@ playServicesMaps = "19.2.0"
 roomRuntime = "2.7.1"
 runtimeLivedata = "1.8.1"
 googleAndroidLibrariesMapsplatformSecretsGradlePlugin = "2.0.1"
-ui = "1.8.1"
+ui = "1.8.2"
 window = "1.3.0"
 
 [libraries]
