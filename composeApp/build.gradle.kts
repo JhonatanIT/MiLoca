@@ -28,7 +28,6 @@ kotlin {
 
     @OptIn(ExperimentalWasmDsl::class)
     wasmJs {
-        moduleName = "composeApp"
         browser {
             val rootDirPath = project.rootDir.path
             val projectDirPath = project.projectDir.path
@@ -76,12 +75,12 @@ kotlin {
 
 android {
     namespace = "org.jibanez.miloca"
-    compileSdk = libs.versions.android.compileSdk.get().toInt()
+    compileSdk = 36  // Updated to latest version
 
     defaultConfig {
         applicationId = "org.jibanez.miloca"
         minSdk = libs.versions.android.minSdk.get().toInt()
-        targetSdk = libs.versions.android.targetSdk.get().toInt()
+        targetSdk = 34  // Reverted to stable version
         versionCode = 1
         versionName = "1.0"
     }
@@ -177,4 +176,3 @@ secrets {
     ignoreList.add("keyToIgnore") // Ignore the key "keyToIgnore"
     ignoreList.add("sdk.*")       // Ignore all keys matching the regexp "sdk.*"
 }
-
