@@ -28,7 +28,7 @@ roomRuntime = "2.8.3"
 runtimeLivedata = "1.9.4"
 googleAndroidLibrariesMapsplatformSecretsGradlePlugin = "2.0.1"
 ui = "1.9.4"
-window = "1.5.0"
+window = "1.5.1"
 
 [libraries]
 android-maps-utils = { module = "com.google.maps.android:android-maps-utils", version.ref = "androidMapsUtils" }
