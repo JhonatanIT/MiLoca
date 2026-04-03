@@ -14,25 +14,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.datetime.Clock
-import kotlinx.datetime.LocalDateTime
+import kotlin.time.Clock // UPDATED: Clock is now part of the Kotlin Standard Library
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
+import kotlinx.datetime.todayIn
 import org.jetbrains.compose.resources.painterResource
-import org.jetbrains.compose.ui.tooling.preview.Preview
 
 import miloca.composeapp.generated.resources.Res
 import miloca.composeapp.generated.resources.compose_multiplatform
 
 @Composable
-@Preview
 fun App() {
     MaterialTheme {
         var showContent by remember { mutableStateOf(false) }
         val greeting = remember { Greeting().greet() }
+        val date = remember { todayDate() }
+
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = "Today's date is ${todaysDate()}",
+                text = "Today's date is $date",
                 modifier = Modifier.padding(20.dp),
                 fontSize = 24.sp,
                 textAlign = TextAlign.Center
@@ -42,7 +41,11 @@ fun App() {
             }
             AnimatedVisibility(showContent) {
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Image(painterResource(Res.drawable.compose_multiplatform), null)
+                    // IMPROVEMENT: Added a meaningful contentDescription for accessibility
+                    Image(
+                        painter = painterResource(Res.drawable.compose_multiplatform),
+                        contentDescription = "Compose Multiplatform Logo"
+                    )
                     Text("Compose: $greeting")
                 }
             }
@@ -50,10 +53,6 @@ fun App() {
     }
 }
 
-fun todaysDate(): String {
-    fun LocalDateTime.format() = toString().substringBefore('T')
-
-    val now = Clock.System.now()
-    val zone = TimeZone.currentSystemDefault()
-    return now.toLocalDateTime(zone).format()
+fun todayDate(): String {
+    return Clock.System.todayIn(TimeZone.currentSystemDefault()).toString()
 }
