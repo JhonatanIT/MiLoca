@@ -55,7 +55,8 @@ kotlin {
         commonMain.dependencies {
             implementation(compose.runtime)
             implementation(compose.foundation)
-            implementation(compose.material)
+            implementation(compose.material3)
+            implementation(libs.compose.material.icons.core)
             implementation(compose.ui)
             implementation(compose.components.resources)
             implementation(compose.components.uiToolingPreview)
@@ -91,7 +92,7 @@ android {
     }
     buildTypes {
         getByName("release") {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
         }
     }
     compileOptions {
@@ -122,7 +123,7 @@ android {
 
         //Material Design
         implementation(libs.androidx.ui)
-        implementation(libs.androidx.material3)
+//        implementation(libs.androidx.material3)
         implementation(libs.androidx.ui.tooling.preview)
 
         //Record Screen
