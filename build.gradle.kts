@@ -7,7 +7,7 @@ plugins {
     alias(libs.plugins.composeCompiler) apply false
     alias(libs.plugins.kotlinMultiplatform) apply false
     alias(libs.plugins.google.android.libraries.mapsplatform.secrets.gradle.plugin) apply false
-    id("com.google.devtools.ksp") version "2.3.11" apply false
+    id("com.google.devtools.ksp") version "2.3.12" apply false
     alias(libs.plugins.kotlin.parcelize) apply false
     // Add the dependency for the Google services Gradle plugin
     id("com.google.gms.google-services") version "4.5.0" apply false
